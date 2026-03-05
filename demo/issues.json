@@ -1,0 +1,20 @@
+[
+  {
+    "id": "1",
+    "identifier": "#1",
+    "title": "Fix division by zero in calculator",
+    "description": "The `divide()` function in `calculator.py` crashes with ZeroDivisionError when b=0.\n\nExpected behavior: raise a `ValueError` with the message 'Cannot divide by zero'.\n\nAlso add a test in `test_calc.py` that verifies the error is raised.",
+    "state": "todo",
+    "labels": ["bug"],
+    "priority": 1
+  },
+  {
+    "id": "2",
+    "identifier": "#2",
+    "title": "Add power function",
+    "description": "Add a `power(base: float, exponent: float) -> float` function to `calculator.py`.\n\nIt should compute base raised to the exponent power. Add corresponding tests in `test_calc.py`.",
+    "state": "todo",
+    "labels": ["feature"],
+    "priority": 2
+  }
+]
