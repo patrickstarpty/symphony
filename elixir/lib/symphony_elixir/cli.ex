@@ -56,6 +56,7 @@ defmodule SymphonyElixir.CLI do
     expanded_path = Path.expand(workflow_path)
 
     if deps.file_regular?.(expanded_path) do
+      SymphonyElixir.DotEnv.load_from_directory(Path.dirname(expanded_path))
       :ok = deps.set_workflow_file_path.(expanded_path)
 
       case deps.ensure_all_started.() do
@@ -114,7 +115,7 @@ defmodule SymphonyElixir.CLI do
   defp acknowledgement_banner do
     lines = [
       "This Symphony implementation is a low key engineering preview.",
-      "Codex will run without any guardrails.",
+      "GitHub Copilot CLI will run without any guardrails.",
       "SymphonyElixir is not a supported product and is presented as-is.",
       "To proceed, start with `--i-understand-that-this-will-be-running-without-the-usual-guardrails` CLI argument"
     ]
