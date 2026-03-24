@@ -1,6 +1,6 @@
 defmodule SymphonyElixir.AgentRunner do
   @moduledoc """
-  Executes a single Linear issue in its workspace with Codex.
+  Executes a single Linear issue in its workspace with GitHub Copilot CLI.
   """
 
   require Logger
@@ -77,56 +77,99 @@ defmodule SymphonyElixir.AgentRunner do
   defp send_worker_runtime_info(_recipient, _issue, _worker_host, _workspace), do: :ok
 
   defp run_codex_turns(workspace, issue, codex_update_recipient, opts, worker_host) do
-    max_turns = Keyword.get(opts, :max_turns, Config.settings!().agent.max_turns)
-    issue_state_fetcher = Keyword.get(opts, :issue_state_fetcher, &Tracker.fetch_issue_states_by_ids/1)
+    ctx = %{
+      max_turns: Keyword.get(opts, :max_turns, Config.settings!().agent.max_turns),
+      max_stale_turns: Keyword.get(opts, :max_stale_turns, Config.settings!().agent.max_stale_turns),
+      issue_state_fetcher: Keyword.get(opts, :issue_state_fetcher, &Tracker.fetch_issue_states_by_ids/1),
+      workspace: workspace,
+      codex_update_recipient: codex_update_recipient,
+      opts: opts
+    }
 
     with {:ok, session} <- AppServer.start_session(workspace, worker_host: worker_host) do
       try do
-        do_run_codex_turns(session, workspace, issue, codex_update_recipient, opts, issue_state_fetcher, 1, max_turns)
+        do_run_codex_turns(session, ctx, issue, _turn = 1, _stale_count = 0, _last_state = nil)
       after
         AppServer.stop_session(session)
       end
     end
   end
 
-  defp do_run_codex_turns(app_session, workspace, issue, codex_update_recipient, opts, issue_state_fetcher, turn_number, max_turns) do
-    prompt = build_turn_prompt(issue, opts, turn_number, max_turns)
+  defp do_run_codex_turns(app_session, ctx, issue, turn_number, stale_count, last_state) do
+    prompt = build_turn_prompt(issue, ctx.opts, turn_number, ctx.max_turns)
 
     with {:ok, turn_session} <-
            AppServer.run_turn(
              app_session,
              prompt,
              issue,
-             on_message: codex_message_handler(codex_update_recipient, issue)
+             on_message: codex_message_handler(ctx.codex_update_recipient, issue)
            ) do
-      Logger.info("Completed agent run for #{issue_context(issue)} session_id=#{turn_session[:session_id]} workspace=#{workspace} turn=#{turn_number}/#{max_turns}")
+      Logger.info(
+        "Completed agent run for #{issue_context(issue)}" <>
+          " session_id=#{turn_session[:session_id]} workspace=#{ctx.workspace}" <>
+          " turn=#{turn_number}/#{ctx.max_turns}"
+      )
 
-      case continue_with_issue?(issue, issue_state_fetcher) do
-        {:continue, refreshed_issue} when turn_number < max_turns ->
-          Logger.info("Continuing agent run for #{issue_context(refreshed_issue)} after normal turn completion turn=#{turn_number}/#{max_turns}")
+      handle_turn_continuation(app_session, ctx, issue, turn_number, stale_count, last_state)
+    end
+  end
 
-          do_run_codex_turns(
-            app_session,
-            workspace,
-            refreshed_issue,
-            codex_update_recipient,
-            opts,
-            issue_state_fetcher,
-            turn_number + 1,
-            max_turns
-          )
+  defp handle_turn_continuation(app_session, ctx, issue, turn_number, stale_count, last_state) do
+    case continue_with_issue?(issue, ctx.issue_state_fetcher) do
+      {:continue, refreshed_issue} when turn_number < ctx.max_turns ->
+        maybe_continue_or_stop_stale(
+          app_session,
+          ctx,
+          refreshed_issue,
+          turn_number,
+          stale_count,
+          last_state
+        )
 
-        {:continue, refreshed_issue} ->
-          Logger.info("Reached agent.max_turns for #{issue_context(refreshed_issue)} with issue still active; returning control to orchestrator")
+      {:continue, refreshed_issue} ->
+        Logger.info(
+          "Reached agent.max_turns for #{issue_context(refreshed_issue)}" <>
+            " with issue still active; returning control to orchestrator"
+        )
 
-          :ok
+        :ok
 
-        {:done, _refreshed_issue} ->
-          :ok
+      {:done, _refreshed_issue} ->
+        :ok
 
-        {:error, reason} ->
-          {:error, reason}
-      end
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp maybe_continue_or_stop_stale(app_session, ctx, issue, turn_number, stale_count, last_state) do
+    current_state = issue.state
+    new_stale_count = if current_state == last_state, do: stale_count + 1, else: 0
+
+    if new_stale_count >= ctx.max_stale_turns do
+      Logger.info(
+        "Stopping agent run for #{issue_context(issue)}:" <>
+          " #{new_stale_count} consecutive turns with no state change" <>
+          " (state=#{current_state})"
+      )
+
+      :ok
+    else
+      Logger.info(
+        "Continuing agent run for #{issue_context(issue)}" <>
+          " after normal turn completion turn=#{turn_number}/#{ctx.max_turns}" <>
+          " state=#{current_state} stale_count=#{new_stale_count}"
+      )
+
+      do_run_codex_turns(
+        app_session,
+        ctx,
+        issue,
+        turn_number + 1,
+        new_stale_count,
+        current_state
+      )
     end
   end
 
@@ -136,11 +179,17 @@ defmodule SymphonyElixir.AgentRunner do
     """
     Continuation guidance:
 
-    - The previous Codex turn completed normally, but the Linear issue is still in an active state.
+    - The previous GitHub Copilot CLI turn completed normally, but the Linear issue is still in an active state.
     - This is continuation turn ##{turn_number} of #{max_turns} for the current agent run.
     - Resume from the current workspace and workpad state instead of restarting from scratch.
     - The original task instructions and prior turn context are already present in this thread, so do not restate them before acting.
     - Focus on the remaining ticket work and do not end the turn while the issue stays active unless you are truly blocked.
+
+    Critical — issue state transition:
+
+    - If your implementation work is complete and the PR is pushed, you MUST move the issue to `Human Review` before ending this turn.
+    - A turn that finishes without transitioning the issue out of its active state will trigger another continuation turn.
+    - Do not leave the issue in `In Progress` if all work, validation, and PR steps are done.
     """
   end
 

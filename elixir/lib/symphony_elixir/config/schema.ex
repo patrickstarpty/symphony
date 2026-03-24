@@ -130,6 +130,7 @@ defmodule SymphonyElixir.Config.Schema do
     embedded_schema do
       field(:max_concurrent_agents, :integer, default: 10)
       field(:max_turns, :integer, default: 20)
+      field(:max_stale_turns, :integer, default: 3)
       field(:max_retry_backoff_ms, :integer, default: 300_000)
       field(:max_concurrent_agents_by_state, :map, default: %{})
     end
@@ -139,11 +140,12 @@ defmodule SymphonyElixir.Config.Schema do
       schema
       |> cast(
         attrs,
-        [:max_concurrent_agents, :max_turns, :max_retry_backoff_ms, :max_concurrent_agents_by_state],
+        [:max_concurrent_agents, :max_turns, :max_stale_turns, :max_retry_backoff_ms, :max_concurrent_agents_by_state],
         empty_values: []
       )
       |> validate_number(:max_concurrent_agents, greater_than: 0)
       |> validate_number(:max_turns, greater_than: 0)
+      |> validate_number(:max_stale_turns, greater_than: 0)
       |> validate_number(:max_retry_backoff_ms, greater_than: 0)
       |> update_change(:max_concurrent_agents_by_state, &Schema.normalize_state_limits/1)
       |> Schema.validate_state_limits(:max_concurrent_agents_by_state)
@@ -157,7 +159,7 @@ defmodule SymphonyElixir.Config.Schema do
 
     @primary_key false
     embedded_schema do
-      field(:command, :string, default: "codex app-server")
+      field(:command, :string, default: "./bin/copilot_cli_app_server")
 
       field(:approval_policy, StringOrMap,
         default: %{
@@ -172,7 +174,7 @@ defmodule SymphonyElixir.Config.Schema do
       field(:thread_sandbox, :string, default: "workspace-write")
       field(:turn_sandbox_policy, :map)
       field(:turn_timeout_ms, :integer, default: 3_600_000)
-      field(:read_timeout_ms, :integer, default: 5_000)
+      field(:read_timeout_ms, :integer, default: 15_000)
       field(:stall_timeout_ms, :integer, default: 300_000)
     end
 
@@ -277,6 +279,7 @@ defmodule SymphonyElixir.Config.Schema do
   def parse(config) when is_map(config) do
     config
     |> normalize_keys()
+    |> normalize_copilot_cli_aliases()
     |> drop_nil_values()
     |> changeset()
     |> apply_action(:validate)
@@ -394,6 +397,21 @@ defmodule SymphonyElixir.Config.Schema do
 
   defp normalize_keys(value) when is_list(value), do: Enum.map(value, &normalize_keys/1)
   defp normalize_keys(value), do: value
+
+  defp normalize_copilot_cli_aliases(config) when is_map(config) do
+    cond do
+      Map.has_key?(config, "codex") ->
+        config
+
+      Map.has_key?(config, "copilot_cli") ->
+        config
+        |> Map.put("codex", Map.get(config, "copilot_cli"))
+        |> Map.delete("copilot_cli")
+
+      true ->
+        config
+    end
+  end
 
   defp normalize_optional_map(nil), do: nil
   defp normalize_optional_map(value) when is_map(value), do: normalize_keys(value)
