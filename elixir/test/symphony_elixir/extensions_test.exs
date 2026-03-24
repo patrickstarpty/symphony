@@ -547,7 +547,7 @@ defmodule SymphonyElixir.ExtensionsTest do
     assert html =~ "Live"
     assert html =~ "Offline"
     assert html =~ "Copy ID"
-    assert html =~ "Codex update"
+    assert html =~ "Copilot update"
     refute html =~ "data-runtime-clock="
     refute html =~ "setInterval(refreshRuntimeClocks"
     refute html =~ "Refresh now"
@@ -568,7 +568,7 @@ defmodule SymphonyElixir.ExtensionsTest do
             event: :notification,
             message: %{
               payload: %{
-                "method" => "codex/event/agent_message_content_delta",
+                "method" => "copilot/event/agent_message_content_delta",
                 "params" => %{
                   "msg" => %{
                     "content" => "structured update"

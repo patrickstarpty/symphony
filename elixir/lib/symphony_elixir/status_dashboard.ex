@@ -605,8 +605,8 @@ defmodule SymphonyElixir.StatusDashboard do
     status_color =
       case event do
         :none -> @ansi_red
-        "codex/event/token_count" -> @ansi_yellow
-        "codex/event/task_started" -> @ansi_green
+        "copilot/event/token_count" -> @ansi_yellow
+        "copilot/event/task_started" -> @ansi_green
         "turn_completed" -> @ansi_magenta
         _ -> @ansi_blue
       end
@@ -1069,7 +1069,7 @@ defmodule SymphonyElixir.StatusDashboard do
 
   @doc false
   @spec humanize_codex_message(term()) :: String.t()
-  def humanize_codex_message(nil), do: "no codex message yet"
+  def humanize_codex_message(nil), do: "no Copilot update yet"
 
   def humanize_codex_message(%{event: event, message: message}) do
     payload = unwrap_codex_message_payload(message)
@@ -1149,7 +1149,7 @@ defmodule SymphonyElixir.StatusDashboard do
   defp humanize_codex_event(:startup_failed, message, _payload), do: "startup failed: #{format_reason(message)}"
   defp humanize_codex_event(:turn_failed, _message, payload), do: humanize_codex_method("turn/failed", payload)
   defp humanize_codex_event(:turn_cancelled, _message, _payload), do: "turn cancelled"
-  defp humanize_codex_event(:malformed, _message, _payload), do: "malformed JSON event from codex"
+  defp humanize_codex_event(:malformed, _message, _payload), do: "malformed JSON event from the Copilot bridge"
   defp humanize_codex_event(_event, _message, _payload), do: nil
 
   defp unwrap_codex_message_payload(%{} = message) do
@@ -1393,7 +1393,7 @@ defmodule SymphonyElixir.StatusDashboard do
     end
   end
 
-  defp humanize_codex_method(<<"codex/event/", suffix::binary>>, payload) do
+  defp humanize_codex_method(<<"copilot/event/", suffix::binary>>, payload) do
     humanize_codex_wrapper_event(suffix, payload)
   end
 

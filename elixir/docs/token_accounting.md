@@ -1,8 +1,8 @@
-# Codex Token Accounting
+# Copilot Bridge Token Accounting
 
-This document explains how Codex reports token usage through the app-server protocol and how Symphony should account for it.
+This document explains how Symphony's legacy app-server token usage events should be interpreted when running through the GitHub Copilot CLI bridge.
 
-It is based on the current Codex source in `codex-rs`, especially:
+It is based on the historical app-server source in `codex-rs`, especially:
 
 - `app-server/README.md`
 - `protocol/src/protocol.rs`
@@ -21,7 +21,7 @@ It is based on the current Codex source in `codex-rs`, especially:
 
 ## Primary Source Semantics
 
-Codex defines `TokenUsageInfo` like this:
+The legacy app-server source defines `TokenUsageInfo` like this:
 
 ```rust
 pub struct TokenUsageInfo {
@@ -45,13 +45,13 @@ That gives the core semantics:
 - `last_token_usage`: the newest chunk of usage that was just added
 - `total_token_usage`: the accumulated total after adding that chunk
 
-This is the most important accounting rule in the Codex source.
+This is the most important accounting rule in that source.
 
 ## Event Types
 
-### `codex/event/token_count`
+### `copilot/event/token_count`
 
-Codex core emits token count events containing `TokenUsageInfo`.
+The legacy app-server core emits token count events containing `TokenUsageInfo`.
 
 These events can carry:
 
@@ -266,7 +266,7 @@ If you misclassify a per-turn `usage` payload as an absolute thread total, later
 
 When reading raw app-server events:
 
-- `codex/event/token_count`
+- `copilot/event/token_count`
   - useful if you are inspecting nested `info.total_token_usage`
 - `thread/tokenUsage/updated`
   - best source for live dashboard and API totals

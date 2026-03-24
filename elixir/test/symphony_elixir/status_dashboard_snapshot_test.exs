@@ -63,7 +63,7 @@ defmodule SymphonyElixir.StatusDashboardSnapshotTest do
              codex_total_tokens: 89_200,
              runtime_seconds: 412,
              turn_count: 4,
-             last_codex_event: "codex/event/task_started",
+             last_codex_event: "copilot/event/task_started",
              last_codex_message: exec_command_message("mix test --cover")
            })
          ],
@@ -177,7 +177,7 @@ defmodule SymphonyElixir.StatusDashboardSnapshotTest do
              codex_total_tokens: 3_200,
              runtime_seconds: 75,
              turn_count: 7,
-             last_codex_event: "codex/event/token_count",
+             last_codex_event: "copilot/event/token_count",
              last_codex_message: token_usage_message(90, 12, 102)
            })
          ],
@@ -252,7 +252,7 @@ defmodule SymphonyElixir.StatusDashboardSnapshotTest do
     %{
       event: :notification,
       message: %{
-        "method" => "codex/event/exec_command_begin",
+        "method" => "copilot/event/exec_command_begin",
         "params" => %{"msg" => %{"command" => command}}
       }
     }
@@ -262,7 +262,7 @@ defmodule SymphonyElixir.StatusDashboardSnapshotTest do
     %{
       event: :notification,
       message: %{
-        "method" => "codex/event/agent_message_delta",
+        "method" => "copilot/event/agent_message_delta",
         "params" => %{"msg" => %{"payload" => %{"delta" => delta}}}
       }
     }

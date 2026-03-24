@@ -331,7 +331,7 @@ defmodule SymphonyElixir.OrchestratorStatusTest do
        %{
          event: :notification,
          payload: %{
-           "method" => "codex/event/token_count",
+           "method" => "copilot/event/token_count",
            "params" => %{
              "msg" => %{
                "type" => "token_count",
@@ -355,7 +355,7 @@ defmodule SymphonyElixir.OrchestratorStatusTest do
        %{
          event: :notification,
          payload: %{
-           "method" => "codex/event/token_count",
+           "method" => "copilot/event/token_count",
            "params" => %{
              "msg" => %{
                "type" => "token_count",
@@ -449,7 +449,7 @@ defmodule SymphonyElixir.OrchestratorStatusTest do
        %{
          event: :notification,
          payload: %{
-           "method" => "codex/event/token_count",
+           "method" => "copilot/event/token_count",
            "params" => %{
              "msg" => %{
                "type" => "event_msg",
@@ -523,7 +523,7 @@ defmodule SymphonyElixir.OrchestratorStatusTest do
        %{
          event: :notification,
          payload: %{
-           "method" => "codex/event/token_count",
+           "method" => "copilot/event/token_count",
            "params" => %{
              "msg" => %{
                "type" => "event_msg",
@@ -685,7 +685,7 @@ defmodule SymphonyElixir.OrchestratorStatusTest do
        %{
          event: :notification,
          payload: %{
-           "method" => "codex/event/token_count",
+           "method" => "copilot/event/token_count",
            "params" => %{
              "msg" => %{
                "type" => "event_msg",
@@ -1458,7 +1458,7 @@ defmodule SymphonyElixir.OrchestratorStatusTest do
     message = %{
       event: :notification,
       message: %{
-        "method" => "codex/event/exec_command_begin",
+        "method" => "copilot/event/exec_command_begin",
         "params" => %{"msg" => %{"command" => "git status --short"}}
       }
     }
@@ -1504,7 +1504,7 @@ defmodule SymphonyElixir.OrchestratorStatusTest do
     reasoning_message = %{
       event: :notification,
       message: %{
-        "method" => "codex/event/agent_reasoning",
+        "method" => "copilot/event/agent_reasoning",
         "params" => %{
           "msg" => %{
             "payload" => %{"summaryText" => "compare retry paths for Linear polling"}
@@ -1516,7 +1516,7 @@ defmodule SymphonyElixir.OrchestratorStatusTest do
     message_delta = %{
       event: :notification,
       message: %{
-        "method" => "codex/event/agent_message_delta",
+        "method" => "copilot/event/agent_message_delta",
         "params" => %{
           "msg" => %{
             "payload" => %{"delta" => "writing workpad reconciliation update"}
@@ -1528,7 +1528,7 @@ defmodule SymphonyElixir.OrchestratorStatusTest do
     fallback_reasoning = %{
       event: :notification,
       message: %{
-        "method" => "codex/event/agent_reasoning",
+        "method" => "copilot/event/agent_reasoning",
         "params" => %{"msg" => %{"payload" => %{}}}
       }
     }
