@@ -76,6 +76,77 @@ defmodule SymphonyElixir.AppServerTest do
     end
   end
 
+  test "app server resolves local relative commands against the WORKFLOW.md directory" do
+    test_root =
+      Path.join(
+        System.tmp_dir!(),
+        "symphony-elixir-app-server-relative-command-#{System.unique_integer([:positive])}"
+      )
+
+    original_workflow_path = Workflow.workflow_file_path()
+
+    try do
+      repo_root = Path.join(test_root, "repo")
+      workflow_file = Path.join(repo_root, "WORKFLOW.md")
+      workspace_root = Path.join(test_root, "workspaces")
+      workspace = Path.join(workspace_root, "MT-REL")
+      relative_app_server = Path.join(repo_root, "elixir/bin/fake-relative-app-server")
+
+      File.mkdir_p!(Path.dirname(relative_app_server))
+      File.mkdir_p!(workspace)
+
+      File.write!(relative_app_server, """
+      #!/bin/sh
+      count=0
+      while IFS= read -r _line; do
+        count=$((count + 1))
+
+        case "$count" in
+          1)
+            printf '%s\\n' '{"id":1,"result":{}}'
+            ;;
+          2)
+            printf '%s\\n' '{"id":2,"result":{"thread":{"id":"thread-relative"}}}'
+            ;;
+          3)
+            printf '%s\\n' '{"id":3,"result":{"turn":{"id":"turn-relative"}}}'
+            ;;
+          4)
+            printf '%s\\n' '{"method":"turn/completed"}'
+            exit 0
+            ;;
+          *)
+            exit 0
+            ;;
+        esac
+      done
+      """)
+
+      File.chmod!(relative_app_server, 0o755)
+      Workflow.set_workflow_file_path(workflow_file)
+
+      write_workflow_file!(workflow_file,
+        workspace_root: workspace_root,
+        codex_command: "./elixir/bin/fake-relative-app-server app-server"
+      )
+
+      issue = %Issue{
+        id: "issue-relative-command",
+        identifier: "MT-REL",
+        title: "Resolve relative bridge command",
+        description: "Ensure relative Copilot bridge commands resolve from WORKFLOW.md",
+        state: "In Progress",
+        url: "https://example.org/issues/MT-REL",
+        labels: ["backend"]
+      }
+
+      assert {:ok, _result} = AppServer.run(workspace, "Run relative bridge command", issue)
+    after
+      Workflow.set_workflow_file_path(original_workflow_path)
+      File.rm_rf(test_root)
+    end
+  end
+
   test "app server passes explicit turn sandbox policies through unchanged" do
     test_root =
       Path.join(
@@ -1130,7 +1201,7 @@ defmodule SymphonyElixir.AppServerTest do
     end
   end
 
-  test "app server captures codex side output and logs it through Logger" do
+  test "app server captures bridge side output and logs it through Logger" do
     test_root =
       Path.join(
         System.tmp_dir!(),
@@ -1182,7 +1253,7 @@ defmodule SymphonyElixir.AppServerTest do
         id: "issue-stderr",
         identifier: "MT-92",
         title: "Capture stderr",
-        description: "Ensure codex stderr is captured and logged",
+        description: "Ensure bridge stderr is captured and logged",
         state: "In Progress",
         url: "https://example.org/issues/MT-92",
         labels: ["backend"]
@@ -1199,7 +1270,7 @@ defmodule SymphonyElixir.AppServerTest do
 
       assert_received {:app_server_message, %{event: :turn_completed}}
       refute_received {:app_server_message, %{event: :malformed}}
-      assert log =~ "Codex turn stream output: warning: this is stderr noise"
+      assert log =~ "Copilot bridge turn stream output: warning: this is stderr noise"
     after
       File.rm_rf(test_root)
     end

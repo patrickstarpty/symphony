@@ -1,6 +1,6 @@
 # Symphony — Copilot Instructions
 
-Symphony polls Linear for issues, creates isolated per-issue workspaces, launches Codex in app-server mode, and manages the full agent lifecycle. Reference implementation is in `elixir/`. All paths below are relative to `elixir/` unless noted.
+Symphony polls Linear for issues, creates isolated per-issue workspaces, launches GitHub Copilot CLI through a local bridge, and manages the full agent lifecycle. Reference implementation is in `elixir/`. All paths below are relative to `elixir/` unless noted.
 
 ## Commands
 
@@ -21,19 +21,19 @@ make e2e                      # live end-to-end (requires LINEAR_API_KEY)
 
 ## Architecture
 
-`Orchestrator` (GenServer) polls Linear → dispatches `AgentRunner` per issue → `AgentRunner` launches `Codex.AppServer` (JSONL over stdio) → `Codex.DynamicTool` serves a `linear_graphql` HTTP tool back to the agent.
+`Orchestrator` (GenServer) polls Linear → dispatches `AgentRunner` per issue → `AgentRunner` launches the internal Copilot CLI app-server bridge (JSONL over stdio) → legacy dynamic-tool / bridge MCP wiring serves `linear_graphql` back to the agent.
 
-| Module | Role |
+| Component | Role |
 |---|---|
 | `Orchestrator` | Polling loop, dispatch, retry, reconciliation, cleanup |
-| `AgentRunner` | One Codex session per issue; turn lifecycle |
-| `Codex.AppServer` | Codex app-server protocol |
-| `Codex.DynamicTool` | Serves `linear_graphql` tool to agents |
+| `AgentRunner` | One Copilot session per issue; turn lifecycle |
+| `App-server bridge` | Internal JSONL bridge layer for GitHub Copilot CLI |
+| `Dynamic tool adapter` | Legacy Linear tool compatibility surface |
 | `Config` / `Workflow` / `WorkflowStore` | Runtime config from `WORKFLOW.md` front matter |
 | `Linear.Client` / `Linear.Adapter` | Linear API |
 | `Tracker` | Issue tracker abstraction (Linear or in-memory) |
 | `Workspace` / `PathSafety` | Per-issue directories; workspace root confinement |
-| `SSH` | Remote Codex workers over SSH |
+| `SSH` | Remote Copilot workers over SSH |
 | `StatusDashboard` | Terminal UI |
 | `HttpServer` + `SymphonyElixirWeb.*` | Optional Phoenix LiveView dashboard + JSON API |
 | `LogFile` / `PromptBuilder` | Per-issue logs; Liquid prompt rendering |
@@ -46,11 +46,17 @@ Optional web layer (Phoenix + Bandit + LiveView) is enabled only when `--port` i
 
 **Config via `SymphonyElixir.Config` only.** Never read env vars ad-hoc; all config flows from `WORKFLOW.md` front matter through `Config`.
 
-**Workspace safety.** Never set Codex `cwd` inside the source repo. All paths validated through `PathSafety` to stay under workspace root.
+**Workspace safety.** Never set GitHub Copilot CLI `cwd` inside the source repo. All paths validated through `PathSafety` to stay under workspace root.
 
 **Orchestrator semantics.** State is concurrency-sensitive. Preserve backoff, retry, reconciliation, and cleanup logic — do not simplify away state transitions.
 
-**Logging** (`docs/logging.md`). Issue-related logs require `issue_id` + `issue_identifier`. Codex session logs require `session_id`. Use `key=value` inline pairs; use deterministic wording for lifecycle events.
+**Logging** (`docs/logging.md`). Issue-related logs require `issue_id` + `issue_identifier`. Copilot session logs require `session_id`. Use `key=value` inline pairs; use deterministic wording for lifecycle events.
+
+**Issue execution flow.** Use one persistent `## Copilot Workpad` comment per issue as the source of truth, while reusing legacy `## Codex Workpad` comments when continuing older work. Do not track progress in the issue body or post separate completion comments. For `Todo`, move the issue to `In Progress` before active work, then create/update the workpad. Reproduce the problem before coding, and mirror any issue-authored `Validation`, `Test Plan`, or `Testing` sections into the workpad as mandatory checks.
+
+**Linear operations.** For issue state, comments, and attachments during orchestrated runs, use Linear MCP or Symphony’s injected `linear_graphql` tool. Prefer exact `stateId` lookups over hardcoded state names, and prefer the GitHub PR attachment flow over generic URL links when attaching a PR to a Linear issue.
+
+**Review gate.** Before moving to `Human Review`, sweep top-level PR comments, inline review comments, and review summaries. Every actionable comment must be addressed or explicitly pushed back, and the PR must carry the `symphony` label.
 
 **Coverage.** Threshold is 100%. Hard-to-test modules (runtime I/O, HTTP, Phoenix) are allowlisted in `mix.exs`. Do not add to the ignore list without justification.
 
@@ -62,30 +68,38 @@ Optional web layer (Phoenix + Bandit + LiveView) is enabled only when `--port` i
 
 ## Skill & Agent Routing
 
-Skills live in `.github/skills/<name>/SKILL.md`. Agents live in `.github/agents/<name>.md`. Route to them based on the current task:
+Repo-local Copilot skills live under `.github/skills/`. Repo-local agents live under `.github/agents/`. Treat these as the installed workflow for this repository and prefer them over ad-hoc approaches when the trigger matches.
+
+`brainstorming` is a hard gate for any new feature, behavior change, design choice, or ambiguous implementation request. Do not use `writing-plans` or start implementation until `brainstorming` has produced a design and the user has approved it.
 
 | When | Use |
 |---|---|
 | Starting any session | `.github/skills/using-superpowers/SKILL.md` |
-| Multi-step task, before touching code | `.github/skills/writing-plans/SKILL.md` |
+| Brainstorming a feature, behavior change, or design before implementation | `.github/skills/brainstorming/SKILL.md` |
+| Multi-step task, before touching code, after approved brainstorming | `.github/skills/writing-plans/SKILL.md` |
 | Executing a written plan | `.github/skills/executing-plans/SKILL.md` |
-| Implementing any feature or bugfix | `.github/skills/test-driven-development/SKILL.md` |
+| Implementing any feature or bugfix, after approved brainstorming when scope or behavior is new/changed | `.github/skills/test-driven-development/SKILL.md` |
 | 2+ independent tasks with no shared state | `.github/skills/dispatching-parallel-agents/SKILL.md` |
 | Independent tasks within the current session | `.github/skills/subagent-driven-development/SKILL.md` |
 | Bug, test failure, or unexpected behavior | `.github/skills/systematic-debugging/SKILL.md` |
+| Creating a clean commit from the current diff | `.github/skills/commit/SKILL.md` |
+| Syncing the current branch with `origin/main` via merge | `.github/skills/pull/SKILL.md` |
+| Pushing branch updates and creating/updating the PR | `.github/skills/push/SKILL.md` |
+| Reading or updating Linear state, comments, or attachments during orchestrated runs | Linear MCP or Symphony `linear_graphql` tool |
 | About to claim work is complete | `.github/skills/verification-before-completion/SKILL.md` |
 | Implementation done, ready to integrate | `.github/skills/finishing-a-development-branch/SKILL.md` |
 | Requesting a code review | `.github/skills/requesting-code-review/SKILL.md` |
 | Receiving code review feedback | `.github/skills/receiving-code-review/SKILL.md` |
 | A major step is complete and needs validation | `code-reviewer` agent (`.github/agents/code-reviewer.md`) |
 | Starting feature work needing workspace isolation | `.github/skills/using-git-worktrees/SKILL.md` |
+| Writing or updating a skill | `.github/skills/writing-skills/SKILL.md` |
 
 ## Issue State → Agent Action
 
 | Linear state | Action |
 |---|---|
 | `Backlog` | Do not modify. Wait for human to move to `Todo`. |
-| `Todo` | Move to `In Progress` → create/find `## Codex Workpad` comment → execute. |
+| `Todo` | Move to `In Progress` → create/find `## Copilot Workpad` comment (or reuse legacy `## Codex Workpad`) → execute. |
 | `In Progress` | Continue from existing workpad comment. |
 | `Human Review` | Do not code. Poll for review updates. |
 | `Rework` | Full reset: close PR, delete workpad, fresh branch from `origin/main`, restart. |

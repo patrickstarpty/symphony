@@ -413,32 +413,30 @@ Fields:
   - State keys are normalized (`lowercase`) for lookup.
   - Invalid entries (non-positive or non-numeric) are ignored.
 
-#### 5.3.6 `codex` (object)
+#### 5.3.6 `copilot_cli` (object)
 
 Fields:
 
-For Codex-owned config values such as `approval_policy`, `thread_sandbox`, and
-`turn_sandbox_policy`, supported values are defined by the targeted Codex app-server version.
-Implementors should treat them as pass-through Codex config values rather than relying on a
-hand-maintained enum in this spec. To inspect the installed Codex schema, run
-`codex app-server generate-json-schema --out <dir>` and inspect the relevant definitions referenced
-by `v2/ThreadStartParams.json` and `v2/TurnStartParams.json`. Implementations may validate these
-fields locally if they want stricter startup checks.
+For Copilot bridge-owned config values such as `approval_policy`, `thread_sandbox`, and
+`turn_sandbox_policy`, supported values are defined by the targeted bridge implementation.
+Implementors should treat them as pass-through compatibility config values rather than relying on a
+hand-maintained enum in this spec. Implementations may validate these fields locally if they want
+stricter startup checks.
 
 - `command` (string shell command)
-  - Default: `codex app-server`
+  - Default: `./bin/copilot_cli_app_server`
   - The runtime launches this command via `bash -lc` in the workspace directory.
   - The launched process must speak a compatible app-server protocol over stdio.
-- `approval_policy` (Codex `AskForApproval` value)
+- `approval_policy` (bridge compatibility approval value)
   - Default: implementation-defined.
-- `thread_sandbox` (Codex `SandboxMode` value)
+- `thread_sandbox` (bridge compatibility sandbox value)
   - Default: implementation-defined.
-- `turn_sandbox_policy` (Codex `SandboxPolicy` value)
+- `turn_sandbox_policy` (bridge compatibility turn sandbox policy value)
   - Default: implementation-defined.
 - `turn_timeout_ms` (integer)
   - Default: `3600000` (1 hour)
 - `read_timeout_ms` (integer)
-  - Default: `5000`
+  - Default: `15000`
 - `stall_timeout_ms` (integer)
   - Default: `300000` (5 minutes)
   - If `<= 0`, stall detection is disabled.
@@ -545,7 +543,7 @@ Validation checks:
 - `tracker.kind` is present and supported.
 - `tracker.api_key` is present after `$` resolution.
 - `tracker.project_slug` is present when required by the selected tracker kind.
-- `codex.command` is present and non-empty.
+- `copilot_cli.command` is present and non-empty.
 
 ### 6.4 Config Fields Summary (Cheat Sheet)
 
@@ -572,13 +570,13 @@ This section is intentionally redundant so a coding agent can implement the conf
 - `agent.max_turns`: integer, default `20`
 - `agent.max_retry_backoff_ms`: integer, default `300000` (5m)
 - `agent.max_concurrent_agents_by_state`: map of positive integers, default `{}`
-- `codex.command`: shell command string, default `codex app-server`
-- `codex.approval_policy`: Codex `AskForApproval` value, default implementation-defined
-- `codex.thread_sandbox`: Codex `SandboxMode` value, default implementation-defined
-- `codex.turn_sandbox_policy`: Codex `SandboxPolicy` value, default implementation-defined
-- `codex.turn_timeout_ms`: integer, default `3600000`
-- `codex.read_timeout_ms`: integer, default `5000`
-- `codex.stall_timeout_ms`: integer, default `300000`
+- `copilot_cli.command`: shell command string, default `./bin/copilot_cli_app_server`
+- `copilot_cli.approval_policy`: bridge compatibility approval value, default implementation-defined
+- `copilot_cli.thread_sandbox`: bridge compatibility sandbox value, default implementation-defined
+- `copilot_cli.turn_sandbox_policy`: bridge compatibility turn sandbox policy value, default implementation-defined
+- `copilot_cli.turn_timeout_ms`: integer, default `3600000`
+- `copilot_cli.read_timeout_ms`: integer, default `15000`
+- `copilot_cli.stall_timeout_ms`: integer, default `300000`
 - `server.port` (extension): integer, optional; enables the optional HTTP server, `0` may be used
   for ephemeral local bind, and CLI `--port` overrides it
 
@@ -915,15 +913,15 @@ Compatibility profile:
 
 Subprocess launch parameters:
 
-- Command: `codex.command`
-- Invocation: `bash -lc <codex.command>`
+- Command: `copilot_cli.command`
+- Invocation: `bash -lc <copilot_cli.command>`
 - Working directory: workspace path
 - Stdout/stderr: separate streams
 - Framing: line-delimited protocol messages on stdout (JSON-RPC-like JSON per line)
 
 Notes:
 
-- The default command is `codex app-server`.
+- The default command is `./bin/copilot_cli_app_server`.
 - Approval policy, cwd, and prompt are expressed in the protocol messages in Section 10.2.
 
 Recommended additional process settings:
@@ -932,7 +930,7 @@ Recommended additional process settings:
 
 ### 10.2 Session Startup Handshake
 
-Reference: https://developers.openai.com/codex/app-server/
+Reference implementation: `elixir/bin/copilot_cli_app_server`
 
 The client must send these protocol messages in order:
 
@@ -950,7 +948,7 @@ semantics):
    - Params include:
      - `clientInfo` object (for example `{name, version}`)
      - `capabilities` object (may be empty)
-   - If the targeted Codex app-server requires capability negotiation for dynamic tools, include the
+   - If the targeted bridge requires capability negotiation for dynamic tools, include the
      necessary capability flag(s) here.
    - Wait for response (`read_timeout_ms`)
 2. `initialized` notification
@@ -960,7 +958,7 @@ semantics):
      - `sandbox` = implementation-defined session sandbox value
      - `cwd` = absolute workspace path
      - If optional client-side tools are implemented, include their advertised tool specs using the
-       protocol mechanism supported by the targeted Codex app-server version.
+       protocol mechanism supported by the targeted bridge version.
 4. `turn/start` request
    - Params include:
      - `threadId`
@@ -1659,7 +1657,7 @@ Implications:
 
 ### 15.5 Harness Hardening Guidance
 
-Running Codex agents against repositories, issue trackers, and other inputs that may contain
+Running coding agents against repositories, issue trackers, and other inputs that may contain
 sensitive data or externally-controlled content can be dangerous. A permissive deployment can lead
 to data leaks, destructive mutations, or full machine compromise if the agent is induced to execute
 harmful commands or use overly-powerful integrations.
@@ -1671,10 +1669,10 @@ fully trustworthy just because they originate inside a normal workflow.
 
 Possible hardening measures include:
 
-- Tightening Codex approval and sandbox settings described elsewhere in this specification instead
+- Tightening Copilot bridge approval and sandbox settings described elsewhere in this specification instead
   of running with a maximally permissive configuration.
 - Adding external isolation layers such as OS/container/VM sandboxing, network restrictions, or
-  separate credentials beyond the built-in Codex policy controls.
+  separate credentials beyond the built-in bridge policy controls.
 - Filtering which Linear issues, projects, teams, labels, or other tracker sources are eligible for
   dispatch so untrusted or out-of-scope tasks do not automatically reach the agent.
 - Narrowing the optional `linear_graphql` tool so it can only read or mutate data inside the
@@ -1956,7 +1954,7 @@ Unless otherwise noted, Sections 17.1 through 17.7 are `Core Conformance`. Bulle
 - `tracker.api_key` works (including `$VAR` indirection)
 - `$VAR` resolution works for tracker API key and path values
 - `~` path expansion works
-- `codex.command` is preserved as a shell command string
+- `copilot_cli.command` is preserved as a shell command string
 - Per-state concurrency override map normalizes state names and ignores invalid values
 - Prompt template renders `issue` and `attempt`
 - Prompt rendering fails on unknown variables (strict mode)
@@ -2008,12 +2006,12 @@ Unless otherwise noted, Sections 17.1 through 17.7 are `Core Conformance`. Bulle
   limits
 - If a snapshot API is implemented, timeout/unavailable cases are surfaced
 
-### 17.5 Coding-Agent App-Server Client
+### 17.5 Copilot CLI Bridge Client
 
-- Launch command uses workspace cwd and invokes `bash -lc <codex.command>`
+- Launch command uses workspace cwd and invokes `bash -lc <copilot_cli.command>`
 - Startup handshake sends `initialize`, `initialized`, `thread/start`, `turn/start`
-- `initialize` includes client identity/capabilities payload required by the targeted Codex
-  app-server protocol
+- `initialize` includes client identity/capabilities payload required by the targeted bridge
+  protocol
 - Policy-related startup payloads use the implementation's documented approval/sandbox settings
 - `thread/start` and `turn/start` parse nested IDs and emit `session_started`
 - Request/response read timeout is enforced

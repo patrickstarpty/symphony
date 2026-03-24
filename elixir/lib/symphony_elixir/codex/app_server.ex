@@ -4,7 +4,7 @@ defmodule SymphonyElixir.Codex.AppServer do
   """
 
   require Logger
-  alias SymphonyElixir.{Codex.DynamicTool, Config, PathSafety, SSH}
+  alias SymphonyElixir.{Codex.DynamicTool, Config, PathSafety, SSH, Workflow}
 
   @initialize_id 1
   @thread_start_id 2
@@ -91,7 +91,7 @@ defmodule SymphonyElixir.Codex.AppServer do
     case start_turn(port, thread_id, prompt, issue, workspace, approval_policy, turn_sandbox_policy) do
       {:ok, turn_id} ->
         session_id = "#{thread_id}-#{turn_id}"
-        Logger.info("Codex session started for #{issue_context(issue)} session_id=#{session_id}")
+        Logger.info("Copilot bridge session started for #{issue_context(issue)} session_id=#{session_id}")
 
         emit_message(
           on_message,
@@ -106,7 +106,7 @@ defmodule SymphonyElixir.Codex.AppServer do
 
         case await_turn_completion(port, on_message, tool_executor, auto_approve_requests) do
           {:ok, result} ->
-            Logger.info("Codex session completed for #{issue_context(issue)} session_id=#{session_id}")
+            Logger.info("Copilot bridge session completed for #{issue_context(issue)} session_id=#{session_id}")
 
             {:ok,
              %{
@@ -117,7 +117,7 @@ defmodule SymphonyElixir.Codex.AppServer do
              }}
 
           {:error, reason} ->
-            Logger.warning("Codex session ended with error for #{issue_context(issue)} session_id=#{session_id}: #{inspect(reason)}")
+            Logger.warning("Copilot bridge session ended with error for #{issue_context(issue)} session_id=#{session_id}: #{inspect(reason)}")
 
             emit_message(
               on_message,
@@ -133,7 +133,7 @@ defmodule SymphonyElixir.Codex.AppServer do
         end
 
       {:error, reason} ->
-        Logger.error("Codex session failed for #{issue_context(issue)}: #{inspect(reason)}")
+        Logger.error("Copilot bridge session failed for #{issue_context(issue)}: #{inspect(reason)}")
         emit_message(on_message, :startup_failed, %{reason: reason}, metadata)
         {:error, reason}
     end
@@ -199,7 +199,7 @@ defmodule SymphonyElixir.Codex.AppServer do
             :binary,
             :exit_status,
             :stderr_to_stdout,
-            args: [~c"-lc", String.to_charlist(Config.settings!().codex.command)],
+            args: [~c"-c", String.to_charlist(local_launch_command())],
             cd: String.to_charlist(workspace),
             line: @port_line_bytes
           ]
@@ -517,7 +517,7 @@ defmodule SymphonyElixir.Codex.AppServer do
             metadata
           )
 
-          Logger.debug("Codex notification: #{inspect(method)}")
+          Logger.debug("Copilot bridge notification: #{inspect(method)}")
           receive_loop(port, on_message, timeout_ms, "", tool_executor, auto_approve_requests)
         end
     end
@@ -972,9 +972,9 @@ defmodule SymphonyElixir.Codex.AppServer do
 
     if text != "" do
       if String.match?(text, ~r/\b(error|warn|warning|failed|fatal|panic|exception)\b/i) do
-        Logger.warning("Codex #{stream_label} output: #{text}")
+        Logger.warning("Copilot bridge #{stream_label} output: #{text}")
       else
-        Logger.debug("Codex #{stream_label} output: #{text}")
+        Logger.debug("Copilot bridge #{stream_label} output: #{text}")
       end
     end
   end
@@ -1031,6 +1031,30 @@ defmodule SymphonyElixir.Codex.AppServer do
     "'" <> String.replace(value, "'", "'\"'\"'") <> "'"
   end
 
+  defp local_launch_command do
+    Config.settings!().codex.command
+    |> resolve_local_command(Workflow.workflow_file_path())
+  end
+
+  defp resolve_local_command(command, workflow_path)
+       when is_binary(command) and is_binary(workflow_path) do
+    trimmed = String.trim_leading(command)
+    leading_size = byte_size(command) - byte_size(trimmed)
+    leading = binary_part(command, 0, leading_size)
+
+    case Regex.run(~r/^(\S+)(.*)$/s, trimmed, capture: :all_but_first) do
+      [executable, rest] ->
+        if String.starts_with?(executable, ["./", "../"]) do
+          leading <> Path.expand(executable, Path.dirname(Path.expand(workflow_path))) <> rest
+        else
+          command
+        end
+
+      _ ->
+        command
+    end
+  end
+
   defp default_on_message(_message), do: :ok
 
   defp tool_call_name(params) when is_map(params) do
@@ -1055,7 +1079,7 @@ defmodule SymphonyElixir.Codex.AppServer do
   defp tool_call_arguments(_params), do: %{}
 
   defp send_message(port, message) do
-    line = Jason.encode!(message) <> "\n"
+    line = Jason.encode!(Map.put_new(message, "jsonrpc", "2.0")) <> "\n"
     Port.command(port, line)
   end
 

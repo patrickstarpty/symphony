@@ -744,7 +744,7 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
     assert config.workspace.root == Path.join(System.tmp_dir!(), "symphony_workspaces")
     assert config.worker.max_concurrent_agents_per_host == nil
     assert config.agent.max_concurrent_agents == 10
-    assert config.codex.command == "codex app-server"
+    assert config.codex.command == "./bin/copilot_cli_app_server"
 
     assert config.codex.approval_policy == %{
              "reject" => %{
@@ -769,11 +769,15 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
            }
 
     assert config.codex.turn_timeout_ms == 3_600_000
-    assert config.codex.read_timeout_ms == 5_000
+    assert config.codex.read_timeout_ms == 15_000
     assert config.codex.stall_timeout_ms == 300_000
 
-    write_workflow_file!(Workflow.workflow_file_path(), codex_command: "codex app-server --model gpt-5.3-codex")
-    assert Config.settings!().codex.command == "codex app-server --model gpt-5.3-codex"
+    write_workflow_file!(Workflow.workflow_file_path(),
+      codex_command: "./bin/copilot_cli_app_server --model gpt-5.4 --reasoning-effort xhigh"
+    )
+
+    assert Config.settings!().codex.command ==
+             "./bin/copilot_cli_app_server --model gpt-5.4 --reasoning-effort xhigh"
 
     explicit_root =
       Path.join(
@@ -879,8 +883,11 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
              "nested" => %{"flag" => true}
            }
 
-    write_workflow_file!(Workflow.workflow_file_path(), codex_command: "codex app-server")
-    assert Config.settings!().codex.command == "codex app-server"
+    write_workflow_file!(Workflow.workflow_file_path(),
+      codex_command: "./bin/copilot_cli_app_server"
+    )
+
+    assert Config.settings!().codex.command == "./bin/copilot_cli_app_server"
   end
 
   test "config resolves $VAR references for env-backed secret and path values" do
@@ -888,7 +895,7 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
     api_key_env_var = "SYMP_LINEAR_API_KEY_#{System.unique_integer([:positive])}"
     workspace_root = Path.join("/tmp", "symphony-workspace-root")
     api_key = "resolved-secret"
-    codex_bin = Path.join(["~", "bin", "codex"])
+    copilot_cli_bridge = Path.join(["~", "bin", "copilot_cli_app_server"])
 
     previous_workspace_root = System.get_env(workspace_env_var)
     previous_api_key = System.get_env(api_key_env_var)
@@ -904,13 +911,13 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
     write_workflow_file!(Workflow.workflow_file_path(),
       tracker_api_token: "$#{api_key_env_var}",
       workspace_root: "$#{workspace_env_var}",
-      codex_command: "#{codex_bin} app-server"
+      codex_command: "#{copilot_cli_bridge} --model gpt-5.4"
     )
 
     config = Config.settings!()
     assert config.tracker.api_key == api_key
     assert config.workspace.root == Path.expand(workspace_root)
-    assert config.codex.command == "#{codex_bin} app-server"
+    assert config.codex.command == "#{copilot_cli_bridge} --model gpt-5.4"
   end
 
   test "config no longer resolves legacy env: references" do
@@ -1044,6 +1051,21 @@ defmodule SymphonyElixir.WorkspaceAndConfigTest do
 
     assert settings.tracker.api_key == "fallback-linear-token"
     assert settings.workspace.root == Path.join(System.tmp_dir!(), "symphony_workspaces")
+  end
+
+  test "schema accepts copilot_cli config as an alias for codex" do
+    assert {:ok, settings} =
+             Schema.parse(%{
+               copilot_cli: %{
+                 command: "./bin/copilot_cli_app_server --model gpt-5.4",
+                 approval_policy: "never",
+                 thread_sandbox: "workspace-write"
+               }
+             })
+
+    assert settings.codex.command == "./bin/copilot_cli_app_server --model gpt-5.4"
+    assert settings.codex.approval_policy == "never"
+    assert settings.codex.thread_sandbox == "workspace-write"
   end
 
   test "schema resolves sandbox policies from explicit and default workspaces" do

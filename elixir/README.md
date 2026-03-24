@@ -15,12 +15,11 @@ This directory contains the current Elixir/OTP implementation of Symphony, based
 
 1. Polls Linear for candidate work
 2. Creates a workspace per issue
-3. Launches Codex in [App Server mode](https://developers.openai.com/codex/app-server/) inside the
-   workspace
-4. Sends a workflow prompt to Codex
-5. Keeps Codex working on the issue until the work is done
+3. Launches the GitHub Copilot CLI bridge inside the workspace
+4. Sends a workflow prompt to GitHub Copilot CLI
+5. Keeps GitHub Copilot CLI working on the issue until the work is done
 
-During app-server sessions, Symphony also serves a client-side `linear_graphql` tool so that repo
+During Copilot CLI bridge sessions, Symphony also exposes a `linear_graphql` MCP tool so that repo
 skills can make raw Linear GraphQL calls.
 
 If a claimed issue moves to a terminal state (`Done`, `Closed`, `Cancelled`, or `Duplicate`),
@@ -81,7 +80,7 @@ Optional flags:
 - `--port` also starts the Phoenix observability service (default: disabled)
 
 The `WORKFLOW.md` file uses YAML front matter for configuration, plus a Markdown body used as the
-Codex session prompt.
+GitHub Copilot CLI session prompt.
 
 Minimal example:
 
@@ -98,8 +97,8 @@ hooks:
 agent:
   max_concurrent_agents: 10
   max_turns: 20
-codex:
-  command: codex app-server
+copilot_cli:
+  command: ./bin/copilot_cli_app_server
 ---
 
 You are working on a Linear issue {{ issue.identifier }}.
@@ -110,16 +109,16 @@ Title: {{ issue.title }} Body: {{ issue.description }}
 Notes:
 
 - If a value is missing, defaults are used.
-- Safer Codex defaults are used when policy fields are omitted:
-  - `codex.approval_policy` defaults to `{"reject":{"sandbox_approval":true,"rules":true,"mcp_elicitations":true}}`
-  - `codex.thread_sandbox` defaults to `workspace-write`
-  - `codex.turn_sandbox_policy` defaults to a `workspaceWrite` policy rooted at the current issue workspace
-- Supported `codex.approval_policy` values depend on the targeted Codex app-server version. In the current local Codex schema, string values include `untrusted`, `on-failure`, `on-request`, and `never`, and object-form `reject` is also supported.
-- Supported `codex.thread_sandbox` values: `read-only`, `workspace-write`, `danger-full-access`.
-- When `codex.turn_sandbox_policy` is set explicitly, Symphony passes the map through to Codex
-  unchanged. Compatibility then depends on the targeted Codex app-server version rather than local
+- Safer Copilot CLI bridge defaults are used when policy fields are omitted:
+  - `copilot_cli.approval_policy` defaults to `{"reject":{"sandbox_approval":true,"rules":true,"mcp_elicitations":true}}`
+  - `copilot_cli.thread_sandbox` defaults to `workspace-write`
+  - `copilot_cli.turn_sandbox_policy` defaults to a `workspaceWrite` policy rooted at the current issue workspace
+- Supported `copilot_cli.approval_policy` values depend on the targeted bridge behavior. Current string values include `untrusted`, `on-failure`, `on-request`, and `never`, and object-form `reject` is also supported.
+- Supported `copilot_cli.thread_sandbox` values: `read-only`, `workspace-write`, `danger-full-access`.
+- When `copilot_cli.turn_sandbox_policy` is set explicitly, Symphony passes the map through to the bridge
+  unchanged. Compatibility then depends on the targeted bridge version rather than local
   Symphony validation.
-- `agent.max_turns` caps how many back-to-back Codex turns Symphony will run in a single agent
+- `agent.max_turns` caps how many back-to-back GitHub Copilot CLI turns Symphony will run in a single agent
   invocation when a turn completes normally but the issue is still in an active state. Default: `20`.
 - If the Markdown body is blank, Symphony uses a default prompt template that includes the issue
   identifier, title, and body.
@@ -130,7 +129,7 @@ Notes:
 - `tracker.api_key` reads from `LINEAR_API_KEY` when unset or when value is `$LINEAR_API_KEY`.
 - For path values, `~` is expanded to the home directory.
 - For env-backed path values, use `$VAR`. `workspace.root` resolves `$VAR` before path handling,
-  while `codex.command` stays a shell command string and any `$VAR` expansion there happens in the
+  while `copilot_cli.command` stays a shell command string and any `$VAR` expansion there happens in the
   launched shell.
 
 ```yaml
@@ -141,8 +140,8 @@ workspace:
 hooks:
   after_create: |
     git clone --depth 1 "$SOURCE_REPO_URL" .
-codex:
-  command: "$CODEX_BIN app-server --model gpt-5.3-codex"
+copilot_cli:
+  command: "./bin/copilot_cli_app_server --model gpt-5.4"
 ```
 
 - If `WORKFLOW.md` is missing or has invalid YAML at startup, Symphony does not boot.
@@ -164,8 +163,9 @@ The observability UI now runs on a minimal Phoenix stack:
 
 - `lib/`: application code and Mix tasks
 - `test/`: ExUnit coverage for runtime behavior
+- `docs/`: operational docs — [troubleshooting](docs/troubleshooting.md), logging, token accounting
 - `WORKFLOW.md`: in-repo workflow contract used by local runs
-- `../.codex/`: repository-local Codex skills and setup helpers
+- `../.github/skills/`: repository-local Copilot skills and setup helpers
 
 ## Testing
 
@@ -174,7 +174,7 @@ make all
 ```
 
 Run the real external end-to-end test only when you want Symphony to create disposable Linear
-resources and launch a real `codex app-server` session:
+resources and launch a real GitHub Copilot CLI bridge session:
 
 ```bash
 cd elixir
@@ -193,14 +193,15 @@ Optional environment variables:
 
 If `SYMPHONY_LIVE_SSH_WORKER_HOSTS` is unset, the SSH scenario uses `docker compose` to start two
 disposable SSH workers on `localhost:<port>`. The live test generates a temporary SSH keypair,
-mounts the host `~/.codex/auth.json` into each worker, verifies that Symphony can talk to them
-over real SSH, then runs the same orchestration flow against those worker addresses. This keeps
-the transport representative without depending on long-lived external machines.
+mounts the auth file referenced by `SYMPHONY_LIVE_DOCKER_AUTH_JSON` into each worker, verifies
+that Symphony can talk to them over real SSH, then runs the same orchestration flow against those
+worker addresses. This keeps the transport representative without depending on long-lived external
+machines.
 
 Set `SYMPHONY_LIVE_SSH_WORKER_HOSTS` if you want `make e2e` to target real SSH hosts instead.
 
 The live test creates a temporary Linear project and issue, writes a temporary `WORKFLOW.md`, runs
-a real agent turn, verifies the workspace side effect, requires Codex to comment on and close the
+a real agent turn, requires GitHub Copilot CLI to comment on and close the
 Linear issue, then marks the project completed so the run remains visible in Linear.
 
 ## FAQ
@@ -213,7 +214,7 @@ actively running subagents, which is very useful during development.
 
 ### What's the easiest way to set this up for my own codebase?
 
-Launch `codex` in your repo, give it the URL to the Symphony repo, and ask it to set things up for
+Launch `copilot` in your repo, give it the URL to the Symphony repo, and ask it to set things up for
 you.
 
 ## License

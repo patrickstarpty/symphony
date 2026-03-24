@@ -97,10 +97,7 @@ Expected: PASS
 
 - [ ] **Step 5: Commit**
 
-```bash
-git add tests/path/test.py src/path/file.py
-git commit -m "feat: add specific feature"
-```
+Use the `commit` skill to stage the planned files and create a clean commit once the test passes.
 ````
 
 ## Remember

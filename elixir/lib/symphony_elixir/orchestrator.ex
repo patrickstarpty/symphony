@@ -1,6 +1,6 @@
 defmodule SymphonyElixir.Orchestrator do
   @moduledoc """
-  Polls Linear and dispatches repository copies to Codex-backed workers.
+  Polls Linear and dispatches repository copies to GitHub Copilot CLI-backed workers.
   """
 
   use GenServer
@@ -479,7 +479,7 @@ defmodule SymphonyElixir.Orchestrator do
       |> terminate_running_issue(issue_id, false)
       |> schedule_issue_retry(issue_id, next_attempt, %{
         identifier: identifier,
-        error: "stalled for #{elapsed_ms}ms without codex activity"
+        error: "stalled for #{elapsed_ms}ms without Copilot CLI activity"
       })
     else
       state
@@ -798,6 +798,7 @@ defmodule SymphonyElixir.Orchestrator do
       | retry_attempts:
           Map.put(state.retry_attempts, issue_id, %{
             attempt: next_attempt,
+            delay_ms: delay_ms,
             timer_ref: timer_ref,
             retry_token: retry_token,
             due_at_ms: due_at_ms,

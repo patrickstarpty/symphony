@@ -13,6 +13,8 @@ Guide completion of development work by presenting clear options and handling ch
 
 **Announce at start:** "I'm using the finishing-a-development-branch skill to complete this work."
 
+This skill decides the endgame. Delegate the underlying git mechanics to the dedicated `commit`, `pull`, and `push` skills instead of re-deriving those workflows here.
+
 ## The Process
 
 ### Step 1: Verify Tests
@@ -67,43 +69,23 @@ Which option?
 
 #### Option 1: Merge Locally
 
-```bash
-# Switch to base branch
-git checkout <base-branch>
-
-# Pull latest
-git pull
-
-# Merge feature branch
-git merge <feature-branch>
-
-# Verify tests on merged result
-<test command>
-
-# If tests pass
-git branch -d <feature-branch>
-```
+1. If the working tree has uncommitted changes, use the `commit` skill first.
+2. Use the `pull` skill on the feature branch to sync it with the latest base branch changes and resolve conflicts before local merge.
+   - In the normal case, this means merging latest `origin/main` into the feature branch.
+3. Switch to the base branch and use the `pull` skill again to fast-forward it before the local merge.
+4. Merge the feature branch locally.
+5. Verify tests on the merged result.
+6. Delete the feature branch only after the merged result passes.
 
 Then: Cleanup worktree (Step 5)
 
 #### Option 2: Push and Create PR
 
-```bash
-# Push branch
-git push -u origin <feature-branch>
+1. If the working tree has uncommitted changes, use the `commit` skill first.
+2. Use the `push` skill to publish the branch, create or update the PR, validate the PR body, and ensure the `symphony` label is present.
+3. Keep the worktree so follow-up review feedback can be handled without recreating the workspace.
 
-# Create PR
-gh pr create --title "<title>" --body "$(cat <<'EOF'
-## Summary
-<2-3 bullets of what changed>
-
-## Test Plan
-- [ ] <verification steps>
-EOF
-)"
-```
-
-Then: Cleanup worktree (Step 5)
+**Do not cleanup worktree.**
 
 #### Option 3: Keep As-Is
 
@@ -135,7 +117,7 @@ Then: Cleanup worktree (Step 5)
 
 ### Step 5: Cleanup Worktree
 
-**For Options 1, 2, 4:**
+**For Options 1 and 4:**
 
 Check if in worktree:
 ```bash
@@ -147,7 +129,7 @@ If yes:
 git worktree remove <worktree-path>
 ```
 
-**For Option 3:** Keep worktree.
+**For Options 2 and 3:** Keep worktree.
 
 ## Quick Reference
 
@@ -197,4 +179,7 @@ git worktree remove <worktree-path>
 - **executing-plans** (Step 5) - After all batches complete
 
 **Pairs with:**
+- **commit** - Create clean commits before local merge or PR publication
+- **pull** - Sync branch state before local merge
+- **push** - Publish the branch and manage the PR
 - **using-git-worktrees** - Cleans up worktree created by that skill
