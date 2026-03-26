@@ -1,7 +1,7 @@
 # AI Native SDLC Orchestrator — Design Spec
 
 **Date:** 2026-03-26
-**Author:** Patrick (QA CoE)
+**Author:** Patrick (QA CoE — Center of Excellence)
 **Status:** Active
 **Sub-specs:** [QA Agent System](2026-03-25-qa-agent-system-design.md)
 
@@ -277,7 +277,7 @@ What this role must produce before handing off:
 | **Trigger** | Issue has label `needs-design`, or issue has label `epic` or `major-feature` (note: these are labels, not JIRA issue types), **in Backlog or Todo state only** |
 | **Skills** | adr-writer, system-design-reviewer, api-contract-generator, change-impact |
 | **Output** | Architecture Decision Record (ADR), system design document, API contracts, dependency map |
-| **Handoff** | Remove `needs-design` label, attach design doc link to issue, issue stays in Todo for Developer pickup |
+| **Handoff** | Remove `needs-design` label, attach design doc link to issue, advance to Todo (or stay in Todo if already there) for Developer pickup |
 | **Guardrail** | Does not write implementation code. Design artifacts only. Must flag unresolvable constraints as human decisions. |
 
 #### Security Agent
@@ -286,7 +286,7 @@ What this role must produce before handing off:
 |--------|--------|
 | **Model** | Claude Sonnet 4.6 (overridable in WORKFLOW.md) |
 | **Trigger** | PR created event (automatic), or label `needs-security-review` |
-| **Skills** | sast-runner, dependency-scanner, owasp-checker, compliance-validator, secret-detector |
+| **Skills** | sast-runner (SAST = Static Application Security Testing), dependency-scanner, owasp-checker, compliance-validator, secret-detector |
 | **Output** | Security report with findings categorized: Critical / High / Medium / Info |
 | **Handoff** | Critical findings → `state:Rework`. High findings → add `security-high` label for human triage. Medium/Info → annotate PR comments only. No findings → pass. |
 | **Guardrail** | Does not fix code. Reports only. Must not suppress or downgrade findings without human approval. |
@@ -330,8 +330,14 @@ Defined in WORKFLOW.md front matter. Each repository has its own WORKFLOW.md tha
 
 pipeline:
   phases:
+    # Label + state AND trigger: fires only when label present AND issue in specified state(s)
+    - role: architecture
+      trigger: { labels: [needs-design, epic, major-feature], states: [Backlog, Todo] }
+      gate: null
+      on_success: null  # remove label, advance to Todo; human moves issue to Todo if in Backlog
+
     - role: requirements-analyst
-      trigger: { labels: [needs-analysis] }
+      trigger: { labels: [needs-analysis], states: [Todo] }
       gate: null
       on_success: phase:developer
       on_failure: null  # flags issue, waits for human
@@ -398,6 +404,7 @@ Next phase starts (new agent role, new Copilot CLI session)
 
 | Tracker State | Internal Phases | Agent Role(s) |
 |---------------|----------------|---------------|
+| **Backlog** | architecture-design (optional) | Architecture / Design Agent |
 | **Todo** | requirements-analysis (optional) | Requirements Analyst |
 | **In Progress** | dev-ready, development, qa-evaluation | Developer, QA Evaluator |
 | **Human Review** | code-review, human-approval | Code Reviewer + Human |
@@ -419,6 +426,8 @@ Internal phases within a tracker state are invisible to the tracker — orchestr
 ### 6.1 Routing Logic
 
 There are two dispatch surfaces: **issue-based routing** (for state/label/internal-phase triggers) and **event-based routing** (for agents triggered by PR/CI/deploy events). They run independently.
+
+> **Trigger key semantics:** Within a trigger block, `labels` and `states` are AND-combined (both must match) when both are present. `events` is handled exclusively by `route_event()` and is independent of `route_issue()`. A trigger block containing both `events` and `labels` means the role fires via OR across the two routers — either an event delivery OR a label+state match can independently activate the role.
 
 ```python
 # ── Issue-based routing (runs each polling cycle) ──────────────────────────
@@ -638,8 +647,10 @@ Allowed transitions (Symphony-initiated):
   │ Todo     │ In Progress   │ Symphony starts Developer phase              │
   │ In Prog. │ Human Review  │ QA gate PASS                                 │
   │ In Prog. │ Human Review  │ Incident fast-track: Incident Response Agent │
-  │          │               │ completes hotfix; QA gate bypassed (label:   │
-  │          │               │ incident present); security scan runs async  │
+  │          │               │ completes hotfix; label:incident present;    │
+  │          │               │ QA gate bypassed. (Security scan is launched │
+  │          │               │ in parallel but does NOT block this          │
+  │          │               │ transition.)                                 │
   │ In Prog. │ Rework        │ Internal failure (agent error or gate FAIL)  │
   │ Human R. │ Rework        │ Critical code review finding                 │
   │ Human R. │ Merging       │ Human approval (not Symphony-initiated)      │
@@ -868,7 +879,7 @@ Skill standard structure as defined in QA Agent sub-spec (skill.yaml + prompt.md
 knowledge-base/
 ├─ standards/
 │   ├─ coding-standards/     — Language-specific coding conventions
-│   ├─ testing-standards/    — POM structure, naming, coverage targets
+│   ├─ testing-standards/    — POM (Page Object Model) structure, naming, coverage targets
 │   ├─ api-standards/        — REST/GraphQL conventions, versioning
 │   └─ security-standards/   — OWASP, authentication patterns
 │
@@ -888,7 +899,7 @@ knowledge-base/
     └─ team-gotchas/         — Common mistakes per team/domain
 ```
 
-Indexed via RAG (vector embeddings). All agent roles can query the knowledge base for domain context and team conventions.
+Indexed via RAG (Retrieval-Augmented Generation — vector embeddings over indexed documents). All agent roles can query the knowledge base for domain context and team conventions.
 
 ## 13. Event Bus
 
@@ -902,7 +913,7 @@ Indexed via RAG (vector embeddings). All agent roles can query the knowledge bas
 | `phase.failed` | Orchestrator | Retry Logic, Alerting |
 | `gate.evaluated` | Quality Gate Engine | Observability, Reporting |
 | `pr.created` | Developer Agent | Security Agent trigger (SAST scan) |
-| `pr.merged` | DevOps Agent | Documentation trigger |
+| `pr.merged` | DevOps Agent | Release Manager Agent + Documentation Agent trigger |
 | `tests.completed` | QA Agent | Observability, Reporting |
 | `subagent.spawned` | Any Agent | Observability |
 | `subagent.completed` | Subagent | Parent Agent |
@@ -1303,8 +1314,8 @@ This section provides the complete picture of how work flows through Symphony fr
           │     │  Agent                   │                          │
           │     │  ├─ Evaluates sprint     │                          │
           │     │  │  contracts (iterative │                          │
-          │     │  │  GAN-style loops,     │                          │
-          │     │  │  see §22.3)           │                          │
+          │     │  │  generator-evaluator  │                          │
+          │     │  │  loops, see §22.3)    │                          │
           │     │  ├─ 3 dimensions:        │                          │
           │     │  │  pass rate / coverage │                          │
           │     │  │  / acceptance         │                          │
@@ -1396,6 +1407,8 @@ Rough estimates for planning — actual times depend on issue complexity and mod
 ### 25.1 Queue Architecture
 
 Symphony maintains a priority queue of eligible issues per team. Issues are evaluated each polling cycle and dispatched according to available capacity.
+
+> **Naming note:** P0–P4 below are **queue-priority identifiers** (runtime dispatch order). They are distinct from **delivery phases** (Phase 1/2/3 in §17) which describe implementation milestones. Avoid confusing the two.
 
 ```
 Priority Levels (highest → lowest):
