@@ -218,7 +218,7 @@ What this role must produce before handing off:
 | Aspect | Detail |
 |--------|--------|
 | **Model** | GPT-5.3-Codex (overridable in WORKFLOW.md) |
-| **Trigger** | Issue state = Todo (no `needs-analysis` label) or In Progress |
+| **Trigger** | Issue state = Todo (no `needs-analysis` label), In Progress, or Rework |
 | **Skills** | commit, push, pull, test-driven-development, systematic-debugging |
 | **Output** | Implementation code, tests, PR, updated workpad |
 | **Handoff** | Advance to QA Evaluation phase (internal) |
@@ -274,7 +274,7 @@ What this role must produce before handing off:
 | Aspect | Detail |
 |--------|--------|
 | **Model** | Claude Sonnet 4.6 (overridable in WORKFLOW.md) |
-| **Trigger** | Issue has label `needs-design`, or issue has label `epic` or `major-feature` (note: these are labels, not JIRA issue types) |
+| **Trigger** | Issue has label `needs-design`, or issue has label `epic` or `major-feature` (note: these are labels, not JIRA issue types), **in Backlog or Todo state only** |
 | **Skills** | adr-writer, system-design-reviewer, api-contract-generator, change-impact |
 | **Output** | Architecture Decision Record (ADR), system design document, API contracts, dependency map |
 | **Handoff** | Remove `needs-design` label, attach design doc link to issue, issue stays in Todo for Developer pickup |
@@ -296,7 +296,7 @@ What this role must produce before handing off:
 | Aspect | Detail |
 |--------|--------|
 | **Model** | Claude Sonnet 4.6 (overridable in WORKFLOW.md) |
-| **Trigger** | PR merged event (post-DevOps handoff), or issue state = Done |
+| **Trigger** | PR merged event (post-DevOps handoff). Event-only — not polled by tracker state. |
 | **Skills** | changelog-generator, version-bumper, release-notes-writer, deployment-tracker |
 | **Output** | Changelog entry, version tag, release notes PR, deployment record in tracker |
 | **Handoff** | Release notes PR → Human Review. Version tag created after human approves. |
@@ -398,8 +398,8 @@ Next phase starts (new agent role, new Copilot CLI session)
 
 | Tracker State | Internal Phases | Agent Role(s) |
 |---------------|----------------|---------------|
-| **Todo** | requirements-analysis (optional), dev-ready | Requirements Analyst, Developer |
-| **In Progress** | development, qa-evaluation | Developer, QA Evaluator |
+| **Todo** | requirements-analysis (optional) | Requirements Analyst |
+| **In Progress** | dev-ready, development, qa-evaluation | Developer, QA Evaluator |
 | **Human Review** | code-review, human-approval | Code Reviewer + Human |
 | **Rework** | rework-development | Developer |
 | **Merging** | merge-and-deploy | DevOps |
@@ -538,7 +538,7 @@ def evaluate_gate(gate_config: dict, phase_artifacts: dict) -> GateResult:
 | **Advisory** | QA gate strict, others advisory | Most teams |
 | **Custom** | Per-gate config (e.g. QA = strict, CI = advisory) | Teams in transition or ramping up |
 
-Configured per project in WORKFLOW.md. CoE sets defaults, business teams can request adjustments with CoE approval. Profile names align with QA sub-spec (Strict/Advisory/Custom) so the same project-level profile governs both orchestrator gates and QA evaluation policy.
+Configured per project in WORKFLOW.md. CoE sets defaults, business teams can request adjustments with CoE approval. Profile names align with QA sub-spec (Strict/Advisory/Custom) so the same project-level profile governs both orchestrator gates and QA evaluation policy. **Note: profile selection (Strict/Advisory/Custom) is a P3 feature. P1 and P2 projects use Advisory defaults.**
 
 ## 8. Tracker Adapter
 
@@ -1035,6 +1035,10 @@ Subagent cleanup protocol:
 **Deliverables:**
 - DevOps role + CI/CD integration skills
 - Documentation role
+- Architecture / Design Agent role
+- Security Agent role
+- Release Manager Agent role
+- Incident Response Agent role
 - Independent QA Agent Session (separate Copilot CLI)
 - Subagent orchestration (worktree isolation, parallel execution)
 - Self-healing automation (M5)
@@ -1079,7 +1083,7 @@ All design decisions from the original draft have been resolved:
 | 3 | **Cost budget model** | Per-team monthly token budget; Platform Engineering allocates; 80% alert + 100% hard stop. See Section 14.3. |
 | 4 | **Agent model diversity** | All roles use Copilot CLI; different models per role by default (GPT-5.3-Codex for Developer, Gemini for QA, Sonnet for others); overridable in WORKFLOW.md. See Section 4.3. |
 | 5 | **AS400 integration depth** | Full integration via approved tooling; direct database access prohibited; all AS400 calls logged. See Section 15. |
-| 6 | **Human override protocol** | Tracker state change = hard kill; `@symphony` comment commands = soft guidance (pause/redirect/stop). See Section 22. |
+| 6 | **Human override protocol** | Tracker state change = hard kill; `@symphony` comment commands = soft guidance (pause/redirect/stop). See Section 23. |
 | 7 | **Offline/air-gapped** | Not supported in P1; Symphony requires full internet access. See Section 15. |
 | 8 | **Progressive rollout** | QA CoE dogfoods first; then other teams with CoE as reference implementation. See Section 17. |
 
@@ -1283,6 +1287,9 @@ This section provides the complete picture of how work flows through Symphony fr
           │  ├─ TDD: test first, then implement, feature by feature    │
           │  ├─ Spawns subagents: parallel modules / debugging         │
           │  └─ Creates PR, updates workpad                            │
+          │         │ (pr.created event fires here)                    │
+          │         ├──── Security Agent (async, parallel)             │
+          │         │     SAST, deps, OWASP; on critical: state:Rework │
           │                  │                                         │
           │                  ▼ (internal phase)                        │
           │     ┌──────────────────────────┐                          │
@@ -1308,7 +1315,6 @@ This section provides the complete picture of how work flows through Symphony fr
   └───────┬───────┘
           │  (parallel, async)
           ├──── Code Reviewer Agent (Claude Sonnet 4.6) → PR review comments
-          ├──── Security Agent (Claude Sonnet 4.6) → SAST, deps, OWASP
           └──── Human reviewer ← makes final approval decision
                     │
              Critical finding?
@@ -1356,8 +1362,8 @@ This section provides the complete picture of how work flows through Symphony fr
 |---|---|---|
 | Backlog | Architecture Agent (if `needs-design`) | Creates issues, sets labels |
 | Todo | Requirements Analyst (if `needs-analysis`) | Reviews AC, approves issue |
-| In Progress | Developer + QA Evaluator (sequential internal) | Available for override only |
-| Human Review | Code Reviewer + Security Agent (parallel, async) | Final approval/rejection |
+| In Progress | Developer + QA Evaluator (sequential internal) + Security Agent (async, pr.created) | Available for override only |
+| Human Review | Code Reviewer (parallel, async) | Final approval/rejection |
 | Rework | Developer + QA Evaluator (full reset) | Reviews rework scope if needed |
 | Merging | DevOps Agent | Notified of deploy status |
 | Done | Release Manager + Documentation (async) | Approves release notes |
@@ -1396,7 +1402,11 @@ Priority Levels (highest → lowest):
 ```yaml
 # WORKFLOW.md
 concurrency:
-  max_concurrent_global: 20        # Symphony-wide limit (governed by Copilot API rate limits)
+  # NOTE: max_concurrent_global is a Symphony-wide limit, not per-project.
+  # It belongs in Symphony's global config file (symphony.yml), not WORKFLOW.md.
+  # Shown here for reference only; WORKFLOW.md values are max_per_team, max_per_issue,
+  # priority_preemption, preempt_at_turn_boundary, and issue_timeout_hr.
+  max_concurrent_global: 20        # Symphony-wide limit (symphony.yml, governed by Copilot API rate limits)
   max_per_team: 3                  # No team monopolizes the orchestrator
   max_per_issue: 4                 # Max subagents per issue (parent + 3 subagents)
   priority_preemption: true        # P0/P1 can preempt running P3/P4 sessions
@@ -1647,6 +1657,16 @@ quality_gates:
     on_fail: rework
     on_inconclusive: advisory
 
+  ci_gate:                    # Gate for DevOps / Merging phase
+    checks:
+      - name: build_passing
+        required: true
+      - name: unit_tests_passing
+        required: true
+      - name: lint_passing
+        required: false
+    on_fail: human_review     # Return to Human Review with CI context
+
 # ── Model Overrides ────────────────────────────────────────────────────
 models:
   developer:    gpt-5.3-codex          # override per-role (must be on approved list)
@@ -1664,6 +1684,7 @@ jira_fields:
 # ── Concurrency & Budget ──────────────────────────────────────────────
 concurrency:
   max_per_team: 3
+  max_per_issue: 4              # Max subagents per issue (parent + 3 subagents)
   priority_preemption: true
   issue_timeout_hr: 8
 
