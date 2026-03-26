@@ -97,12 +97,15 @@ class Issue:
 class AgentRole:
     name: str                          # e.g. "developer", "qa-evaluator"
     agent_md_path: str                 # Path to agent.md definition
-    trigger_states: list[str]          # Which issue states activate this role
-    trigger_labels: list[str]          # Optional label-based routing
+    trigger_states: list[str]          # Issue states that activate this role
+    trigger_labels: list[str]          # Label-based routing (e.g. needs-analysis)
+    trigger_events: list[str]          # Event-based routing (e.g. pr.created, pr.merged)
+    trigger_internal: bool             # True if triggered by orchestrator only (not tracker)
     available_skills: list[str]        # Skills this role can use
     evaluation_dimensions: list[str]   # How this role's work is judged
     handoff_state: str                 # Issue state after successful completion
     fail_state: str                    # Issue state on failure
+    model: str                         # Copilot CLI model (e.g. gpt-5.3-codex)
 ```
 
 ### 3.3 Orchestration Phase
@@ -125,7 +128,14 @@ class Pipeline:
     # Example: developer → qa_evaluation → human_review → merge
 ```
 
-## 4. Agent Role System
+### 3.5 Workpad
+
+The **workpad** is a pinned tracker comment on the issue, used as the agent's running log and source of truth. It is the same concept as the Elixir implementation's `## Copilot Workpad` comment. Symphony creates one workpad per issue at the start of the first phase and updates it in place throughout the lifecycle. Agents write progress, decisions, QA reports, and sprint contract summaries to the workpad. Humans read the workpad to understand what the agent has done and why.
+
+```
+TrackerAdapter.update_workpad(issue_id, content)
+  → updates the pinned "## Copilot Workpad" comment body in JIRA/Linear
+```
 
 ### 4.1 Role Definitions (`agents/` directory)
 
@@ -310,9 +320,10 @@ Defined in WORKFLOW.md front matter. Each repository has its own WORKFLOW.md tha
 
 ```yaml
 # on_success / on_failure values:
-#   phase:<role>         — advance to an internal phase (same tracker state)
-#   state:<tracker-state> — transition the tracker issue state
-#   null                 — no automatic action; wait for human or retry
+#   phase:<role>          — advance to an internal phase (same tracker state)
+#   state:<tracker-state> — transition the tracker issue state (Symphony-initiated)
+#   label:<label-name>    — add a label to the issue (signal without state change)
+#   null                  — no automatic action; wait for human or retry
 
 pipeline:
   phases:
@@ -337,8 +348,13 @@ pipeline:
     - role: code-reviewer
       trigger: { states: [Human Review] }
       gate: null
-      on_success: state:Merging  # human makes final call
+      on_success: label:ready-to-merge  # signals no critical findings; human still approves Merging
       on_failure: state:Rework
+
+    # NOTE: Human Review → Merging is ALWAYS human-initiated.
+    # Symphony adds the ready-to-merge label on code-reviewer success, but never
+    # transitions to Merging itself. The human approves in the tracker, which
+    # triggers the devops phase via webhook (issue.state_changed → Merging).
 
     - role: devops
       trigger: { states: [Merging] }
@@ -399,8 +415,11 @@ Internal phases within a tracker state are invisible to the tracker — orchestr
 
 ### 6.1 Routing Logic
 
+There are two dispatch surfaces: **issue-based routing** (for state/label/internal-phase triggers) and **event-based routing** (for agents triggered by PR/CI/deploy events). They run independently.
+
 ```python
-def route(issue: Issue, pipeline: Pipeline) -> AgentRole | None:
+# ── Issue-based routing (runs each polling cycle) ──────────────────────────
+def route_issue(issue: Issue, pipeline: Pipeline) -> AgentRole | None:
     """Determine which agent role should handle this issue."""
 
     # 1. Check internal phase first (orchestrator-managed, highest priority)
@@ -410,7 +429,7 @@ def route(issue: Issue, pipeline: Pipeline) -> AgentRole | None:
     if current_phase and current_phase.trigger.get("internal"):
         return load_role(current_phase.role)
 
-    # 2. Check label-triggered roles (e.g. needs-analysis)
+    # 2. Check label-triggered roles (e.g. needs-analysis, needs-design, incident)
     for phase in pipeline.phases:
         if phase.trigger.get("labels"):
             if any(l in issue.labels for l in phase.trigger["labels"]):
@@ -422,7 +441,25 @@ def route(issue: Issue, pipeline: Pipeline) -> AgentRole | None:
             return load_role(phase.role)
 
     return None  # No matching role — skip this issue
+
+
+# ── Event-based routing (runs on each webhook event) ──────────────────────
+def route_event(event: TrackerEvent, pipeline: Pipeline) -> list[AgentRole]:
+    """Dispatch agents triggered by tracker/CI events (parallel, non-blocking)."""
+    roles = []
+    for phase in pipeline.phases:
+        if event.type in phase.trigger.get("events", []):
+            roles.append(load_role(phase.role))
+    return roles  # Multiple roles may respond to the same event (e.g. pr.created)
+
+
+# ── Event types that trigger event-based dispatch ─────────────────────────
+# pr.created    → Security Agent (SAST scan)
+# pr.merged     → Release Manager Agent, Documentation Agent
+# ci.completed  → informs DevOps phase (surfaced as artifact, not separate dispatch)
 ```
+
+**Key distinction:** Issue-based routes produce one agent per issue at a time. Event-based routes are fire-and-forget: the event spawns the agent asynchronously, with results posted back to the issue as tracker comments or PR annotations. Event-triggered agents do not block or advance the main pipeline phase.
 
 ### 6.2 Prompt Assembly
 
@@ -1365,7 +1402,7 @@ concurrency:
 ### 25.2 Concurrency Safety
 
 - **Each issue has exactly one active agent session at a time.** Subagents are children of that session, not independent sessions.
-- **Two-phase locking:** Orchestrator acquires a distributed lock on each issue before dispatching. Prevents duplicate dispatch during parallel polling cycles.
+- **Two-phase locking:** Orchestrator acquires a lock on each issue before dispatching. Prevents duplicate dispatch during parallel polling cycles. P1: in-process lock (single Python process, threading.Lock). P3: distributed lock (Redis or similar) for multi-instance deployment.
 - **Idempotent dispatch:** If Symphony restarts mid-dispatch, it checks `.symphony/phase.json` to determine if a session is already in progress before starting a new one.
 
 ### 25.3 Resource Signals
@@ -1579,6 +1616,20 @@ pipeline:
       on_success: state:Human Review
       on_failure: state:Rework
     # ... additional phases
+
+    # Event-triggered phases (fire-and-forget, do not block main pipeline):
+    - role: security
+      trigger: { events: [pr.created] }
+      on_success: label:security-passed
+      on_failure: state:Rework
+
+    - role: release-manager
+      trigger: { events: [pr.merged] }
+      on_success: null
+
+    - role: documentation
+      trigger: { events: [pr.merged] }
+      on_success: null
 
 # ── Quality Gates ──────────────────────────────────────────────────────
 quality_gates:
