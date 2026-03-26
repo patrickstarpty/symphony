@@ -277,7 +277,7 @@ What this role must produce before handing off:
 | **Trigger** | Issue has label `needs-design`, or issue has label `epic` or `major-feature` (note: these are labels, not JIRA issue types), **in Backlog or Todo state only** |
 | **Skills** | adr-writer, system-design-reviewer, api-contract-generator, change-impact |
 | **Output** | Architecture Decision Record (ADR), system design document, API contracts, dependency map |
-| **Handoff** | Remove `needs-design` label, attach design doc link to issue, advance to Todo (or stay in Todo if already there) for Developer pickup |
+| **Handoff** | Remove `needs-design` label, attach design doc link to issue, orchestrator advances state to Todo (Backlog→Todo if in Backlog; no-op if already in Todo) for Developer pickup |
 | **Guardrail** | Does not write implementation code. Design artifacts only. Must flag unresolvable constraints as human decisions. |
 
 #### Security Agent
@@ -334,7 +334,7 @@ pipeline:
     - role: architecture
       trigger: { labels: [needs-design, epic, major-feature], states: [Backlog, Todo] }
       gate: null
-      on_success: null  # remove label, advance to Todo; human moves issue to Todo if in Backlog
+      on_success: state:Todo  # orchestrator advances Backlog→Todo; no-op if already Todo
 
     - role: requirements-analyst
       trigger: { labels: [needs-analysis], states: [Todo] }
@@ -644,6 +644,7 @@ Allowed transitions (Symphony-initiated):
   ┌──────────┬───────────────┬──────────────────────────────────────────────┐
   │ From     │ To            │ Guard Condition                              │
   ├──────────┼───────────────┼──────────────────────────────────────────────┤
+  │ Backlog  │ Todo          │ Architecture Agent completes design artifacts│
   │ Todo     │ In Progress   │ Symphony starts Developer phase              │
   │ In Prog. │ Human Review  │ QA gate PASS                                 │
   │ In Prog. │ Human Review  │ Incident fast-track: Incident Response Agent │
@@ -1640,6 +1641,12 @@ project:
 # ── Pipeline Definition ───────────────────────────────────────────────
 pipeline:
   phases:
+    # AND trigger: fires only when label matches AND issue is in specified state(s)
+    - role: architecture
+      trigger: { labels: [needs-design, epic, major-feature], states: [Backlog, Todo] }
+      gate: null
+      on_success: state:Todo  # advances Backlog→Todo; no-op if already in Todo
+
     - role: developer
       trigger: { states: [Todo, In Progress, Rework] }
       gate: null
@@ -1650,7 +1657,7 @@ pipeline:
       gate: qa_gate
       on_success: state:Human Review
       on_failure: state:Rework
-    # ... additional phases
+    # ... additional phases (see §5.1 for full pipeline)
 
     # Event-triggered phases (fire-and-forget, do not block main pipeline):
     - role: security
