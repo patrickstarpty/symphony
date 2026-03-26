@@ -66,34 +66,6 @@ Optional web layer (Phoenix + Bandit + LiveView) is enabled only when `--port` i
 
 **Docs updates.** Config/behavior changes require same-PR updates to `../README.md`, `README.md`, and `WORKFLOW.md` as appropriate.
 
-## Skill & Agent Routing
-
-Repo-local Copilot skills live under `.github/skills/`. Repo-local agents live under `.github/agents/`. Treat these as the installed workflow for this repository and prefer them over ad-hoc approaches when the trigger matches.
-
-`brainstorming` is a hard gate for any new feature, behavior change, design choice, or ambiguous implementation request. Do not use `writing-plans` or start implementation until `brainstorming` has produced a design and the user has approved it.
-
-| When | Use |
-|---|---|
-| Starting any session | `.github/skills/using-superpowers/SKILL.md` |
-| Brainstorming a feature, behavior change, or design before implementation | `.github/skills/brainstorming/SKILL.md` |
-| Multi-step task, before touching code, after approved brainstorming | `.github/skills/writing-plans/SKILL.md` |
-| Executing a written plan | `.github/skills/executing-plans/SKILL.md` |
-| Implementing any feature or bugfix, after approved brainstorming when scope or behavior is new/changed | `.github/skills/test-driven-development/SKILL.md` |
-| 2+ independent tasks with no shared state | `.github/skills/dispatching-parallel-agents/SKILL.md` |
-| Independent tasks within the current session | `.github/skills/subagent-driven-development/SKILL.md` |
-| Bug, test failure, or unexpected behavior | `.github/skills/systematic-debugging/SKILL.md` |
-| Creating a clean commit from the current diff | `.github/skills/commit/SKILL.md` |
-| Syncing the current branch with `origin/main` via merge | `.github/skills/pull/SKILL.md` |
-| Pushing branch updates and creating/updating the PR | `.github/skills/push/SKILL.md` |
-| Reading or updating Linear state, comments, or attachments during orchestrated runs | Linear MCP or Symphony `linear_graphql` tool |
-| About to claim work is complete | `.github/skills/verification-before-completion/SKILL.md` |
-| Implementation done, ready to integrate | `.github/skills/finishing-a-development-branch/SKILL.md` |
-| Requesting a code review | `.github/skills/requesting-code-review/SKILL.md` |
-| Receiving code review feedback | `.github/skills/receiving-code-review/SKILL.md` |
-| A major step is complete and needs validation | `code-reviewer` agent (`.github/agents/code-reviewer.md`) |
-| Starting feature work needing workspace isolation | `.github/skills/using-git-worktrees/SKILL.md` |
-| Writing or updating a skill | `.github/skills/writing-skills/SKILL.md` |
-
 ## Issue State → Agent Action
 
 | Linear state | Action |
