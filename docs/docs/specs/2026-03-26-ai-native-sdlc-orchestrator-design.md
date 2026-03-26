@@ -81,8 +81,9 @@ class Issue:
     title: str
     description: str
     state: str                 # Current tracker state
-    priority: int
+    priority: str              # critical | high | medium | low (normalized from tracker)
     labels: list[str]
+    issue_type: str | None         # epic | story | task | bug | incident (normalized)
     acceptance_criteria: list[str]   # Extracted from description
     blocked_by: list[str]            # Dependency blocking
     branch_name: str | None
@@ -136,6 +137,8 @@ The **workpad** is a pinned tracker comment on the issue, used as the agent's ru
 TrackerAdapter.update_workpad(issue_id, content)
   → updates the pinned "## Copilot Workpad" comment body in JIRA/Linear
 ```
+
+## 4. Agent Role System
 
 ### 4.1 Role Definitions (`agents/` directory)
 
@@ -271,7 +274,7 @@ What this role must produce before handing off:
 | Aspect | Detail |
 |--------|--------|
 | **Model** | Claude Sonnet 4.6 (overridable in WORKFLOW.md) |
-| **Trigger** | Issue has label `needs-design`, or issue is tagged as `epic` / `major-feature` |
+| **Trigger** | Issue has label `needs-design`, or issue has label `epic` or `major-feature` (note: these are labels, not JIRA issue types) |
 | **Skills** | adr-writer, system-design-reviewer, api-contract-generator, change-impact |
 | **Output** | Architecture Decision Record (ADR), system design document, API contracts, dependency map |
 | **Handoff** | Remove `needs-design` label, attach design doc link to issue, issue stays in Todo for Developer pickup |
@@ -282,7 +285,7 @@ What this role must produce before handing off:
 | Aspect | Detail |
 |--------|--------|
 | **Model** | Claude Sonnet 4.6 (overridable in WORKFLOW.md) |
-| **Trigger** | PR created event (automatic), or label `needs-security-review`, or post-CI trigger |
+| **Trigger** | PR created event (automatic), or label `needs-security-review` |
 | **Skills** | sast-runner, dependency-scanner, owasp-checker, compliance-validator, secret-detector |
 | **Output** | Security report with findings categorized: Critical / High / Medium / Info |
 | **Handoff** | Critical findings → `state:Rework`. High findings → add `security-high` label for human triage. Medium/Info → annotate PR comments only. No findings → pass. |
@@ -304,7 +307,7 @@ What this role must produce before handing off:
 | Aspect | Detail |
 |--------|--------|
 | **Model** | GPT-5.3-Codex for hotfix code; Claude Sonnet 4.6 for root-cause analysis |
-| **Trigger** | Issue has label `incident` (P0/P1), or issue state = Incident |
+| **Trigger** | Issue has label `incident` (P0/P1 severity) |
 | **Skills** | log-analyzer, root-cause-analysis, systematic-debugging, hotfix-developer |
 | **Output** | Root cause analysis report, hotfix PR with tests, incident timeline in workpad |
 | **Handoff** | Hotfix PR → Human Review (emergency fast-track: skip QA gate, go directly to human). |
@@ -636,13 +639,15 @@ Allowed transitions (Symphony-initiated):
   │ Human R. │ Merging       │ Human approval (not Symphony-initiated)      │
   │ Merging  │ Done          │ DevOps phase completes, deploy confirmed      │
   │ Merging  │ Human Review  │ CI gate FAIL                                 │
+  │ Rework   │ In Progress   │ Symphony restarts Developer phase after reset│
   │ Any      │ Blocked       │ Dependency issue not yet Done                │
+  │ Blocked  │ In Progress   │ All blocking issues reached Done (unblocked) │
   └──────────┴───────────────┴──────────────────────────────────────────────┘
 
 Forbidden (Symphony cannot initiate):
   - Any state → Done (except via DevOps phase)
   - Any state → Merging (human approves at Human Review)
-  - Rework → Human Review directly (must go through Dev + QA again)
+  - Rework → Human Review directly (must go through Rework → In Progress → QA gate pass first)
 ```
 
 Human actors can transition to any state at any time. Symphony detects unexpected state changes on the next turn boundary and adjusts accordingly (see Section 23).
@@ -898,7 +903,7 @@ Indexed via RAG (vector embeddings). All agent roles can query the knowledge bas
 
 ### 13.2 Implementation
 
-P1: In-process event emitter (Python asyncio). P3: External message broker (Redis Pub/Sub or similar) for distributed deployment.
+P2: In-process event emitter (Python asyncio). P3: External message broker (Redis Pub/Sub or similar) for distributed deployment.
 
 ## 14. Observability
 
@@ -1001,7 +1006,7 @@ Subagent cleanup protocol:
 - QA Evaluator role (agent.md) — same-session prompt injection, not separate agent dispatch (from QA sub-spec P1; upgrades to independent session in P3)
 - 5 QA evaluation skills (test-runner, coverage-analyzer, acceptance-validator, qa-reporter, failure-classifier)
 - QA quality gate (pass rate + coverage + acceptance)
-- Sprint Contract Protocol between Developer and QA Evaluator (see Section 21)
+- Sprint Contract Protocol between Developer and QA Evaluator (see Section 22)
 - Phase Initialization Protocol + `.symphony/progress.json` + `.symphony/notes.md`
 - Terminal UI dashboard
 - Memory adapter (testing)
@@ -1578,7 +1583,7 @@ For each team onboarding to Symphony:
 - [ ] WORKFLOW.md created with pipeline configuration
 - [ ] Target maturity level agreed with AI Governance
 - [ ] Agent.md files submitted for Governance approval
-- [ ] Quality gate thresholds agreed (Strict / Advisory / Custom profile)
+- [ ] Quality gate thresholds agreed (profile selection: Strict/Advisory/Custom available from P3; P1/P2 teams use Advisory defaults)
 - [ ] Team budget allocated by Platform Engineering
 - [ ] JIRA/Linear webhook configured
 - [ ] Workspace storage provisioned
@@ -1619,7 +1624,7 @@ pipeline:
 
     # Event-triggered phases (fire-and-forget, do not block main pipeline):
     - role: security
-      trigger: { events: [pr.created] }
+      trigger: { events: [pr.created], labels: [needs-security-review] }
       on_success: label:security-passed
       on_failure: state:Rework
 
@@ -1628,7 +1633,7 @@ pipeline:
       on_success: null
 
     - role: documentation
-      trigger: { events: [pr.merged] }
+      trigger: { events: [pr.merged], labels: [needs-docs] }
       on_success: null
 
 # ── Quality Gates ──────────────────────────────────────────────────────
@@ -1638,7 +1643,7 @@ quality_gates:
     dimensions:
       pass_rate:  { threshold: 100, policy: strict }
       coverage:   { threshold: 80,  policy: strict }
-      acceptance: { threshold: 100, policy: advisory }
+      acceptance: { threshold: 100, policy: strict }   # Advisory profile: QA gate is strict
     on_fail: rework
     on_inconclusive: advisory
 
@@ -1651,6 +1656,10 @@ models:
 jira_state_mapping:
   "Awaiting Sign-off": Human Review
   "Ready to Deploy": Merging
+
+# ── JIRA Field Overrides ─────────────────────────────────────────────
+jira_fields:
+  ac_field: "customfield_10020"  # Custom field for acceptance criteria (default: description)
 
 # ── Concurrency & Budget ──────────────────────────────────────────────
 concurrency:
