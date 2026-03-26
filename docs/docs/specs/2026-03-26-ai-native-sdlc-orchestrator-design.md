@@ -433,10 +433,13 @@ def route_issue(issue: Issue, pipeline: Pipeline) -> AgentRole | None:
         return load_role(current_phase.role)
 
     # 2. Check label-triggered roles (e.g. needs-analysis, needs-design, incident)
+    #    If a phase defines BOTH labels and states, BOTH conditions must match (AND).
     for phase in pipeline.phases:
         if phase.trigger.get("labels"):
             if any(l in issue.labels for l in phase.trigger["labels"]):
-                return load_role(phase.role)
+                allowed_states = phase.trigger.get("states")
+                if allowed_states is None or issue.state in allowed_states:
+                    return load_role(phase.role)
 
     # 3. Check state-triggered roles
     for phase in pipeline.phases:
@@ -479,7 +482,7 @@ When a role is selected, the orchestrator assembles the agent prompt:
 **Context engineering principles:**
 
 - **Resident identity** — `agent.md` is always in context; defines who the agent is and what it optimizes for.
-- **Just-in-time skills** — Only L1 descriptors loaded upfront. Full skill content (L2/L3) fetched on demand when the agent invokes the skill. Never dump the entire skill library into context.
+- **Just-in-time skills** — Only L1 descriptors loaded upfront. Full skill content (L2/L3) fetched on demand when the agent invokes the skill. Never dump the entire skill library into context. (Skill levels: L1 = name + one-line description; L2 = usage guide; L3 = full implementation detail. Cross-reference: QA sub-spec §4 defines the skill taxonomy.)
 - **Right altitude** — System prompts must be specific enough to guide behavior, but not so brittle they encode hardcoded logic. The test: can you explain the agent's role in one sentence? If the prompt requires paragraph-level conditionals, it's too low-altitude.
 - **Minimal viable tool sets** — Each role receives only the tools relevant to its function. Ambiguous overlapping tools are a failure mode; agents cannot reliably choose between tools that have unclear boundaries.
 - **Progress file over memory** — Phase state is in `.symphony/progress.json` (machine-readable) and `.symphony/notes.md` (agent-written notes). Never rely on the context window to hold progress across sessions.
@@ -634,6 +637,9 @@ Allowed transitions (Symphony-initiated):
   ├──────────┼───────────────┼──────────────────────────────────────────────┤
   │ Todo     │ In Progress   │ Symphony starts Developer phase              │
   │ In Prog. │ Human Review  │ QA gate PASS                                 │
+  │ In Prog. │ Human Review  │ Incident fast-track: Incident Response Agent │
+  │          │               │ completes hotfix; QA gate bypassed (label:   │
+  │          │               │ incident present); security scan runs async  │
   │ In Prog. │ Rework        │ Internal failure (agent error or gate FAIL)  │
   │ Human R. │ Rework        │ Critical code review finding                 │
   │ Human R. │ Merging       │ Human approval (not Symphony-initiated)      │
@@ -895,7 +901,7 @@ Indexed via RAG (vector embeddings). All agent roles can query the knowledge bas
 | `phase.completed` | Orchestrator | Next Phase Trigger, Observability |
 | `phase.failed` | Orchestrator | Retry Logic, Alerting |
 | `gate.evaluated` | Quality Gate Engine | Observability, Reporting |
-| `pr.created` | Developer Agent | Code Reviewer trigger |
+| `pr.created` | Developer Agent | Security Agent trigger (SAST scan) |
 | `pr.merged` | DevOps Agent | Documentation trigger |
 | `tests.completed` | QA Agent | Observability, Reporting |
 | `subagent.spawned` | Any Agent | Observability |
@@ -1054,7 +1060,7 @@ Subagent cleanup protocol:
 
 | Measure | Phase | Owner |
 |---------|-------|-------|
-| M1 TDD-driven SDLC | P2 | Developer role (TDD skill) + QA gate |
+| M1 TDD-driven SDLC | P1 | Developer role (TDD skill) + QA gate (both delivered P1; full multi-phase measurement requires P2 pipeline) |
 | M2 Requirement → test case | P2 | Requirements Analyst role |
 | M3 Code gen with skills | P2 | QA Evaluator role (test gen skills) |
 | M4 Risk-based prioritization | P3 | Quality Gate Engine |
@@ -1297,7 +1303,8 @@ This section provides the complete picture of how work flows through Symphony fr
           │     │  Agent                   │                          │
           │     │  ├─ Evaluates sprint     │                          │
           │     │  │  contracts (iterative │                          │
-          │     │  │  GAN-style loops)     │                          │
+          │     │  │  GAN-style loops,     │                          │
+          │     │  │  see §22.3)           │                          │
           │     │  ├─ 3 dimensions:        │                          │
           │     │  │  pass rate / coverage │                          │
           │     │  │  / acceptance         │                          │
@@ -1361,7 +1368,7 @@ This section provides the complete picture of how work flows through Symphony fr
 | Tracker State | Active Agents | Human Role |
 |---|---|---|
 | Backlog | Architecture Agent (if `needs-design`) | Creates issues, sets labels |
-| Todo | Requirements Analyst (if `needs-analysis`) | Reviews AC, approves issue |
+| Todo | Requirements Analyst (if `needs-analysis`); Developer (if no `needs-analysis` label, starts immediately) | Reviews AC, approves issue |
 | In Progress | Developer + QA Evaluator (sequential internal) + Security Agent (async, pr.created) | Available for override only |
 | Human Review | Code Reviewer (parallel, async) | Final approval/rejection |
 | Rework | Developer + QA Evaluator (full reset) | Reviews rework scope if needed |
