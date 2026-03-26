@@ -256,6 +256,50 @@ What this role must produce before handing off:
 | **Handoff** | PR with doc changes → Human Review |
 | **Guardrail** | Does not modify application code. Docs only. |
 
+#### Architecture / Design Agent
+
+| Aspect | Detail |
+|--------|--------|
+| **Model** | Claude Sonnet 4.6 (overridable in WORKFLOW.md) |
+| **Trigger** | Issue has label `needs-design`, or issue is tagged as `epic` / `major-feature` |
+| **Skills** | adr-writer, system-design-reviewer, api-contract-generator, change-impact |
+| **Output** | Architecture Decision Record (ADR), system design document, API contracts, dependency map |
+| **Handoff** | Remove `needs-design` label, attach design doc link to issue, issue stays in Todo for Developer pickup |
+| **Guardrail** | Does not write implementation code. Design artifacts only. Must flag unresolvable constraints as human decisions. |
+
+#### Security Agent
+
+| Aspect | Detail |
+|--------|--------|
+| **Model** | Claude Sonnet 4.6 (overridable in WORKFLOW.md) |
+| **Trigger** | PR created event (automatic), or label `needs-security-review`, or post-CI trigger |
+| **Skills** | sast-runner, dependency-scanner, owasp-checker, compliance-validator, secret-detector |
+| **Output** | Security report with findings categorized: Critical / High / Medium / Info |
+| **Handoff** | Critical findings → `state:Rework`. High findings → add `security-high` label for human triage. Medium/Info → annotate PR comments only. No findings → pass. |
+| **Guardrail** | Does not fix code. Reports only. Must not suppress or downgrade findings without human approval. |
+
+#### Release Manager Agent
+
+| Aspect | Detail |
+|--------|--------|
+| **Model** | Claude Sonnet 4.6 (overridable in WORKFLOW.md) |
+| **Trigger** | PR merged event (post-DevOps handoff), or issue state = Done |
+| **Skills** | changelog-generator, version-bumper, release-notes-writer, deployment-tracker |
+| **Output** | Changelog entry, version tag, release notes PR, deployment record in tracker |
+| **Handoff** | Release notes PR → Human Review. Version tag created after human approves. |
+| **Guardrail** | Does not merge to main. Must not bump major version without explicit human approval. Semantic versioning enforced. |
+
+#### Incident Response Agent
+
+| Aspect | Detail |
+|--------|--------|
+| **Model** | GPT-5.3-Codex for hotfix code; Claude Sonnet 4.6 for root-cause analysis |
+| **Trigger** | Issue has label `incident` (P0/P1), or issue state = Incident |
+| **Skills** | log-analyzer, root-cause-analysis, systematic-debugging, hotfix-developer |
+| **Output** | Root cause analysis report, hotfix PR with tests, incident timeline in workpad |
+| **Handoff** | Hotfix PR → Human Review (emergency fast-track: skip QA gate, go directly to human). |
+| **Guardrail** | Hotfix must include at least one regression test. Must not bypass security scan (runs in parallel to minimize delay). Must not push to main without human approval. |
+
 > **Cross-model objectivity principle:** Developer uses GPT-5.3-Codex; QA Evaluator uses Gemini 3 Pro; Code Reviewer uses Claude Sonnet 4.6. Using different models for generation and evaluation reduces the risk of blind spots inherited from a single model's training. All models are accessed through Copilot CLI's model-selection capability.
 
 ## 5. Multi-Phase Orchestration
@@ -514,6 +558,70 @@ jira_state_defaults:
 ```
 
 Unmapped states are logged as a warning and treated as `null` (issue skipped). Platform Engineering reviews unmapped state warnings during onboarding to converge on complete mappings.
+
+### 8.5 Webhook Integration
+
+Symphony supports real-time event delivery via webhooks in addition to polling. Webhooks are the primary trigger mechanism; polling is the reliability fallback.
+
+```
+JIRA/Linear Webhook → Symphony HTTP endpoint → Event Queue → Orchestrator
+                          (/api/v1/webhooks)
+```
+
+```yaml
+# Supported webhook events
+webhook_events:
+  - issue.created          # New issue → evaluate if Symphony should pick up
+  - issue.state_changed    # State transition → trigger matching phase
+  - issue.label_added      # Label added → may trigger role (needs-design, incident, etc.)
+  - issue.comment_added    # Human comment → parse for @symphony commands
+  - issue.dependency_resolved  # Blocked-by issue reaches Done → unblock dependents
+  - pr.created             # → trigger Security Agent (parallel to Code Reviewer)
+  - pr.merged              # → trigger Release Manager + Documentation agents
+  - ci.completed           # CI pass/fail → inform DevOps phase
+```
+
+Webhook endpoint authenticates via HMAC signature verification. Failed delivery is retried by the tracker. Symphony deduplicates events via event ID to prevent double-processing.
+
+### 8.6 Bidirectional State Machine
+
+Symphony transitions tracker states on behalf of agents. Guard conditions prevent invalid transitions.
+
+```
+Allowed transitions (Symphony-initiated):
+  ┌──────────┬───────────────┬──────────────────────────────────────────────┐
+  │ From     │ To            │ Guard Condition                              │
+  ├──────────┼───────────────┼──────────────────────────────────────────────┤
+  │ Todo     │ In Progress   │ Symphony starts Developer phase              │
+  │ In Prog. │ Human Review  │ QA gate PASS                                 │
+  │ In Prog. │ Rework        │ Internal failure (agent error or gate FAIL)  │
+  │ Human R. │ Rework        │ Critical code review finding                 │
+  │ Human R. │ Merging       │ Human approval (not Symphony-initiated)      │
+  │ Merging  │ Done          │ DevOps phase completes, deploy confirmed      │
+  │ Merging  │ Human Review  │ CI gate FAIL                                 │
+  │ Any      │ Blocked       │ Dependency issue not yet Done                │
+  └──────────┴───────────────┴──────────────────────────────────────────────┘
+
+Forbidden (Symphony cannot initiate):
+  - Any state → Done (except via DevOps phase)
+  - Any state → Merging (human approves at Human Review)
+  - Rework → Human Review directly (must go through Dev + QA again)
+```
+
+Human actors can transition to any state at any time. Symphony detects unexpected state changes on the next turn boundary and adjusts accordingly (see Section 23).
+
+### 8.7 Issue Dependency Handling
+
+```
+blocked_by: [PROJ-100, PROJ-101]  ← from JIRA/Linear issue links
+```
+
+Symphony maintains a dependency graph per polling cycle:
+
+1. When an issue has unresolved `blocked_by` links, it is skipped during candidate selection.
+2. When a blocking issue reaches Done/Merged, Symphony emits `issue.dependency_resolved` internally.
+3. The blocked issue is re-evaluated on the next poll cycle; if no remaining blockers, it is picked up normally.
+4. Dependency cycles (PROJ-A blocks PROJ-B blocks PROJ-A) are detected and flagged as `dependency-cycle` label on both issues; humans must resolve.
 
 ## 9. Workspace & Execution
 
@@ -1089,3 +1197,477 @@ Commands are case-insensitive and can appear anywhere in the comment. Multiple c
 ### 23.3 Audit
 
 All override events (state changes + comment commands) are logged in `.symphony/history.jsonl` with the issuer's identity and timestamp.
+
+## 24. End-to-End SDLC Lifecycle
+
+This section provides the complete picture of how work flows through Symphony from idea to production. Every agent role in Section 4.3 has a defined entry and exit point in this lifecycle.
+
+### 24.1 Complete Flow Diagram
+
+```
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  IDEA / REQUEST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+          │
+          ▼ Issue created in JIRA/Linear (by human PM / BA / engineer)
+  ┌───────────────┐
+  │  Backlog      │ ← needs-design label?
+  └───────┬───────┘       │
+          │               ▼
+          │     ┌─────────────────────────┐
+          │     │  Architecture / Design  │ → ADR, system design doc
+          │     │  Agent                  │   API contracts
+          │     └────────────┬────────────┘
+          │                  │ Remove needs-design
+          ▼                  ▼
+  ┌───────────────┐
+  │     Todo      │ ← needs-analysis label?
+  └───────┬───────┘       │
+          │               ▼
+          │     ┌──────────────────────────┐
+          │     │  Requirements Analyst    │ → Structured AC, test matrix,
+          │     │  Agent                   │   ambiguity flags
+          │     └────────────┬─────────────┘
+          │                  │ Remove needs-analysis
+          ▼                  ▼
+          │ [Developer Agent picks up]
+  ┌───────────────┐
+  │  In Progress  │◄──────────────────────────────────────────────────┐
+  └───────┬───────┘                                                    │
+          │                                                            │
+          │  Developer Agent (GPT-5.3-Codex)                          │
+          │  ├─ Phase Init (get bearings, smoke test, progress.json)   │
+          │  ├─ Sprint Contract negotiation with QA Evaluator          │
+          │  ├─ TDD: test first, then implement, feature by feature    │
+          │  ├─ Spawns subagents: parallel modules / debugging         │
+          │  └─ Creates PR, updates workpad                            │
+          │                  │                                         │
+          │                  ▼ (internal phase)                        │
+          │     ┌──────────────────────────┐                          │
+          │     │  QA Evaluator            │ (Gemini 3 Pro)           │
+          │     │  Agent                   │                          │
+          │     │  ├─ Evaluates sprint     │                          │
+          │     │  │  contracts (iterative │                          │
+          │     │  │  GAN-style loops)     │                          │
+          │     │  ├─ 3 dimensions:        │                          │
+          │     │  │  pass rate / coverage │                          │
+          │     │  │  / acceptance         │                          │
+          │     │  └─ Verdict: PASS/FAIL   │                          │
+          │     └────────┬─────────────────┘                          │
+          │           FAIL│   PASS                                     │
+          │              │    │                                        │
+          │      state:Rework  └──── state:Human Review                │
+          │         (fresh branch                                      │
+          │          from main) ──────────────────────────────────────┘
+          │
+          ▼
+  ┌───────────────┐
+  │ Human Review  │
+  └───────┬───────┘
+          │  (parallel, async)
+          ├──── Code Reviewer Agent (Claude Sonnet 4.6) → PR review comments
+          ├──── Security Agent (Claude Sonnet 4.6) → SAST, deps, OWASP
+          └──── Human reviewer ← makes final approval decision
+                    │
+             Critical finding?
+             ├─ YES → state:Rework
+             └─ NO (human approves) → state:Merging
+                    │
+                    ▼
+  ┌───────────────┐
+  │    Merging    │
+  └───────┬───────┘
+          │  DevOps Agent (Claude Sonnet 4.6)
+          │  ├─ Merge PR to main
+          │  ├─ Trigger / monitor CI/CD pipeline
+          │  └─ Confirm deployment
+          │
+          ├─ CI FAIL → state:Human Review (with error context)
+          └─ Deploy OK → state:Done
+                    │
+                    ▼
+  ┌───────────────┐
+  │     Done      │ (async, post-merge)
+  └───────┬───────┘
+          ├──── Release Manager Agent → changelog, version tag, release notes
+          └──── Documentation Agent  → API docs, architecture diagram updates
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  PRODUCTION INCIDENT PATH (parallel track, pre-empts queue)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+  Label: incident (P0/P1)
+          │
+          ▼
+  Incident Response Agent
+  ├─ Log analysis + root cause (Claude Sonnet 4.6)
+  ├─ Hotfix implementation (GPT-5.3-Codex)
+  └─ Incident report in workpad
+          │
+          ▼ Emergency fast-track
+  Human Review → Merging → Done + post-mortem
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+```
+
+### 24.2 Agent Responsibility Matrix
+
+| Tracker State | Active Agents | Human Role |
+|---|---|---|
+| Backlog | Architecture Agent (if `needs-design`) | Creates issues, sets labels |
+| Todo | Requirements Analyst (if `needs-analysis`) | Reviews AC, approves issue |
+| In Progress | Developer + QA Evaluator (sequential internal) | Available for override only |
+| Human Review | Code Reviewer + Security Agent (parallel, async) | Final approval/rejection |
+| Rework | Developer + QA Evaluator (full reset) | Reviews rework scope if needed |
+| Merging | DevOps Agent | Notified of deploy status |
+| Done | Release Manager + Documentation (async) | Approves release notes |
+| Incident | Incident Response Agent (pre-empts queue) | Reviews hotfix, approves merge |
+
+### 24.3 SDLC Time Budget (Reference)
+
+Rough estimates for planning — actual times depend on issue complexity and model speed.
+
+| Phase | Typical Duration | Max (configurable) |
+|---|---|---|
+| Requirements Analysis | 5–15 min | 30 min |
+| Architecture / Design | 20–60 min | 2 hr |
+| Development | 30 min – 4 hr | 8 hr |
+| QA Evaluation | 15–45 min | 2 hr |
+| Code Review (automated) | 5–15 min | 30 min |
+| Security Scan | 5–20 min | 1 hr |
+| DevOps / Deploy | 10–30 min | 1 hr |
+| Release Notes | 5–10 min | 30 min |
+
+## 25. Concurrency & Capacity Model
+
+### 25.1 Queue Architecture
+
+Symphony maintains a priority queue of eligible issues per team. Issues are evaluated each polling cycle and dispatched according to available capacity.
+
+```
+Priority Levels (highest → lowest):
+  P0: incident        — pre-empts any running non-incident session
+  P1: critical        — fills next available slot immediately
+  P2: high            — normal queue priority
+  P3: medium          — normal queue priority
+  P4: low             — fills slots only when P0–P3 backlog is empty
+```
+
+```yaml
+# WORKFLOW.md
+concurrency:
+  max_concurrent_global: 20        # Symphony-wide limit (governed by Copilot API rate limits)
+  max_per_team: 3                  # No team monopolizes the orchestrator
+  max_per_issue: 4                 # Max subagents per issue (parent + 3 subagents)
+  priority_preemption: true        # P0/P1 can preempt running P3/P4 sessions
+  preempt_at_turn_boundary: true   # Never interrupt mid-turn; wait for clean boundary
+  issue_timeout_hr: 8              # Park issue if phase exceeds this; notify human
+```
+
+### 25.2 Concurrency Safety
+
+- **Each issue has exactly one active agent session at a time.** Subagents are children of that session, not independent sessions.
+- **Two-phase locking:** Orchestrator acquires a distributed lock on each issue before dispatching. Prevents duplicate dispatch during parallel polling cycles.
+- **Idempotent dispatch:** If Symphony restarts mid-dispatch, it checks `.symphony/phase.json` to determine if a session is already in progress before starting a new one.
+
+### 25.3 Resource Signals
+
+Symphony dynamically adjusts concurrency based on:
+- Copilot API error rate (429 responses → back off)
+- Tracker API latency (slow tracker → reduce polling frequency)
+- Team budget utilization (>90% monthly budget → pause non-critical issues)
+- Workspace disk usage (>80% → block new workspace creation, alert admin)
+
+## 26. AI Governance Integration
+
+### 26.1 Governance Role in Symphony
+
+AI Governance does not operate Symphony day-to-day. Their role is:
+1. **Policy setting** — Define acceptable use, approved models, quality gate minimums
+2. **Approval** — Sign off on new agent.md definitions before activation
+3. **Oversight** — Receive regular reports on agent behavior, quality, and cost
+4. **Intervention** — Can pause Symphony globally or per-team
+
+### 26.2 Agent Approval Workflow
+
+New or modified `agent.md` files require AI Governance review before activation in any production team:
+
+```
+1. Engineer or CoE submits agent.md PR to .github/agents/
+2. PR includes:
+   - Role definition
+   - Trigger conditions
+   - Guardrails
+   - Quality gate configuration
+   - Risk assessment (what can this agent break?)
+3. AI Governance reviewer approves/rejects via PR review
+4. On approval: agent.md is tagged with approval metadata:
+
+   # Approved: 2026-03-26
+   # Approved-by: AI Governance (governance@company.com)
+   # Risk-level: medium
+   # Review-due: 2026-09-26  ← semi-annual re-review
+
+5. Symphony validates approval metadata at startup;
+   agents without valid approval are disabled with a warning.
+```
+
+### 26.3 Governance Reporting
+
+Weekly automated report delivered to AI Governance:
+
+```markdown
+## Symphony Weekly Report — Week of 2026-03-24
+
+### Throughput
+- Issues completed: 47 (↑12% vs last week)
+- Avg cycle time: 4.2 hr (↓8%)
+- Phases completed: 183
+
+### Quality
+- QA gate pass rate: 89% (target: 85%) ✓
+- Code review rejection rate: 12%
+- Defect escape rate: 0.8% (↑ alert: was 0.2% last week)
+
+### Cost
+- Total tokens used: 8.4M (budget: 10M) — 84% utilized
+- Cost per issue (avg): $4.20
+- Top 3 teams by cost: payments-api ($890), web-checkout ($720), core-api ($650)
+
+### Security
+- Security findings: 3 Critical (all blocked PR), 12 High (human review), 28 Medium
+- Critical finding types: SQL injection (2), hardcoded secret (1)
+
+### Model Usage
+- GPT-5.3-Codex: 42% of tokens (Developer role)
+- Gemini 3 Pro: 28% of tokens (QA Evaluator)
+- Claude Sonnet 4.6: 30% of tokens (all other roles)
+
+### Human Override Events
+- @symphony stop: 3 (reasons logged in audit trail)
+- State override (human): 7
+- Agent pre-emptions (P0/P1): 2
+
+### Governance Actions Required
+- [ALERT] Defect escape rate spike on payments-api — review recommended
+- [RENEWAL] security-agent.md approval expires 2026-04-01 — re-review needed
+```
+
+### 26.4 Compliance Audit Trail (Insurance Regulatory)
+
+For insurance industry compliance (internal audit, regulatory review):
+
+| Requirement | Symphony Implementation |
+|---|---|
+| **Who did what** | All state transitions logged with actor (agent role + session ID, or human username) |
+| **When** | ISO 8601 timestamps on all log entries |
+| **What changed** | Before/after state for every tracker transition; PR diff links |
+| **Why** | Gate evaluation results, workpad notes, sprint contracts preserved as artifacts |
+| **Immutability** | `.symphony/history.jsonl` is append-only; stored in compliance-grade object storage |
+| **Retention** | 90 days hot (searchable), 2 years cold archive (regulatory minimum) |
+| **Access control** | Audit logs readable by compliance team (`audit:read` role); not modifiable by anyone |
+
+### 26.5 Model Governance
+
+AI Governance maintains an approved model list. Symphony only allows models on this list:
+
+```yaml
+# Symphony global config (managed by AI Governance)
+approved_models:
+  - claude-sonnet-4.6
+  - gpt-5.3-codex
+  - gemini-3-pro
+  # Unapproved: claude-opus-4.6 (cost), gpt-5.4 (not yet evaluated)
+```
+
+Using an unapproved model in WORKFLOW.md causes Symphony to reject the config and log a compliance violation.
+
+## 27. Incremental Adoption Maturity Model
+
+Teams do not need to adopt Symphony all at once. This maturity model defines a progressive path from zero to full AI-native SDLC.
+
+### 27.1 Maturity Levels
+
+```
+Level 0 — Ad-hoc
+  Engineers use Copilot CLI manually, no orchestration.
+  Quality: depends on individual discipline.
+  Symphony role: none.
+
+Level 1 — Developer Automation
+  Symphony handles Developer role only.
+  Engineers review and QA manually.
+  Value: consistent code style, TDD enforced, faster implementation.
+  Config: developer.md only in WORKFLOW.md.
+
+Level 2 — Dev + QA
+  Symphony adds QA Evaluator phase after Developer.
+  Manual human review and merge.
+  Value: automated quality gate, reduced manual testing burden.
+  Config: developer.md + qa-evaluator.md.
+
+Level 3 — Full Inner Loop
+  Symphony runs: Analyst → Developer → QA → Code Reviewer.
+  DevOps and Release still manual.
+  Value: full automated SDLC from Todo to Human Review.
+  Config: 4 roles active.
+
+Level 4 — End-to-End
+  All roles active: full pipeline from Backlog to Done.
+  Human gates only at: architecture decisions, merge approval, incident hotfix.
+  Value: Symphony manages entire development lifecycle.
+  Config: all agent.md files active.
+
+Level 5 — AI-Native (Future)
+  Symphony uses retrospective data to improve its own skills and quality gates.
+  Agent performance tracked over time; underperforming agents flagged for skill update.
+  Skill versions managed via Skill Hub governance.
+  Value: self-improving SDLC orchestration.
+  Config: requires full observability pipeline + CoE skill governance process.
+```
+
+### 27.2 Adoption Timeline (Reference)
+
+| Level | Typical Onboarding Time | Prerequisites |
+|---|---|---|
+| 0 → 1 | 1 sprint | WORKFLOW.md configured, workspace dir set up |
+| 1 → 2 | 1–2 sprints | QA skills deployed, quality gate thresholds agreed |
+| 2 → 3 | 2–3 sprints | Code reviewer + analyst agent.md approved by AI Governance |
+| 3 → 4 | 1–2 sprints | CI/CD integration, DevOps agent.md approved |
+| 4 → 5 | Ongoing | Full observability, CoE skill governance active |
+
+### 27.3 Onboarding Checklist
+
+For each team onboarding to Symphony:
+
+- [ ] WORKFLOW.md created with pipeline configuration
+- [ ] Target maturity level agreed with AI Governance
+- [ ] Agent.md files submitted for Governance approval
+- [ ] Quality gate thresholds agreed (Strict / Advisory / Custom profile)
+- [ ] Team budget allocated by Platform Engineering
+- [ ] JIRA/Linear webhook configured
+- [ ] Workspace storage provisioned
+- [ ] Pilot issues selected (non-critical, well-defined AC)
+- [ ] Rollback plan documented (what to do if Symphony produces bad code)
+- [ ] Team briefing: what Symphony does, what humans must still do, how to override
+
+## 28. WORKFLOW.md Template System
+
+WORKFLOW.md is the single configuration file per project. It has two layers: YAML front matter (orchestration config) and a Liquid/Jinja body (prompt templates).
+
+### 28.1 Complete Front Matter Schema
+
+```yaml
+---
+# ── Orchestrator Identity ──────────────────────────────────────────────
+project:
+  name: "Payments API"
+  team: "payments-api"
+  repo: "github.com/company/payments-api"
+  tracker: linear           # linear | jira
+  tracker_project: "PAY"    # JIRA project key or Linear team identifier
+
+# ── Pipeline Definition ───────────────────────────────────────────────
+pipeline:
+  phases:
+    - role: developer
+      trigger: { states: [Todo, In Progress, Rework] }
+      gate: null
+      on_success: phase:qa-evaluator
+      on_failure: null
+    - role: qa-evaluator
+      trigger: { internal: true }
+      gate: qa_gate
+      on_success: state:Human Review
+      on_failure: state:Rework
+    # ... additional phases
+
+# ── Quality Gates ──────────────────────────────────────────────────────
+quality_gates:
+  qa_gate:
+    profile: Advisory         # Strict | Advisory | Custom
+    dimensions:
+      pass_rate:  { threshold: 100, policy: strict }
+      coverage:   { threshold: 80,  policy: strict }
+      acceptance: { threshold: 100, policy: advisory }
+    on_fail: rework
+    on_inconclusive: advisory
+
+# ── Model Overrides ────────────────────────────────────────────────────
+models:
+  developer:    gpt-5.3-codex          # override per-role (must be on approved list)
+  qa-evaluator: gemini-3-pro
+
+# ── JIRA State Mapping (optional overrides) ───────────────────────────
+jira_state_mapping:
+  "Awaiting Sign-off": Human Review
+  "Ready to Deploy": Merging
+
+# ── Concurrency & Budget ──────────────────────────────────────────────
+concurrency:
+  max_per_team: 3
+  priority_preemption: true
+  issue_timeout_hr: 8
+
+cost_budget:
+  team: payments-api
+  monthly_token_limit: 5_000_000
+  alert_threshold: 0.80
+  hard_stop: true
+
+# ── Subagent Config ───────────────────────────────────────────────────
+subagent:
+  max_concurrent: 3
+  timeout_ms: 600000
+  isolation: worktree
+
+# ── Workspace ─────────────────────────────────────────────────────────
+workspace:
+  root: ~/code/symphony-workspaces
+  ttl_days: 7               # Auto-cleanup after issue reaches Done
+  stale_session_ttl_hr: 24  # Clean up subagent worktrees after this duration
+---
+```
+
+### 28.2 Prompt Template Body
+
+The Markdown body below the front matter contains Liquid/Jinja templates rendered when Symphony assembles agent prompts.
+
+```liquid
+## Developer Prompt
+
+You are working on {{ issue.identifier }}: {{ issue.title }}
+
+**Acceptance Criteria:**
+{% for ac in issue.acceptance_criteria %}
+- {{ ac }}
+{% endfor %}
+
+**Branch:** {{ issue.branch_name | default: "to be created" }}
+**PR:** {{ artifacts.developer.pr_url | default: "not yet created" }}
+
+{% if previous_phases contains "qa-evaluator" %}
+**Previous QA Feedback:**
+{{ artifacts.qa_evaluator.report_summary }}
+{% endif %}
+
+**Working Directory:** {{ workspace.path }}
+
+Start with the Phase Initialization Protocol, then implement one feature at a time.
+```
+
+### 28.3 Template Variable Reference
+
+| Variable | Type | Description |
+|---|---|---|
+| `issue.identifier` | string | e.g. `PAY-123` |
+| `issue.title` | string | Issue title |
+| `issue.description` | string | Full issue body |
+| `issue.acceptance_criteria` | list | Extracted AC items |
+| `issue.labels` | list | Current labels |
+| `issue.priority` | string | critical/high/medium/low |
+| `issue.url` | string | Link to tracker issue |
+| `artifacts.<role>.*` | object | Phase artifacts from previous roles |
+| `workspace.path` | string | Absolute workspace directory |
+| `workspace.repo` | string | Repo URL |
+| `phase.current` | string | Current phase name |
+| `phase.turn` | int | Current turn number |
+| `phase.context_usage_pct` | float | Context window usage 0.0–1.0 |
