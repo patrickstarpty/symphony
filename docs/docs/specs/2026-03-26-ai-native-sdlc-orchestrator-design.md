@@ -410,7 +410,7 @@ Next phase starts (new agent role, new Copilot CLI session)
 > **Note:** Architecture Agent trigger covers `states: [Backlog, Todo]` — it fires in Backlog (normal path) or Todo (if `needs-design` label is added to an already-Todo issue). The `on_success: state:Todo` transition is idempotent in the Todo case.
 | **In Progress** | development, qa-evaluation | Developer, QA Evaluator |
 | **Human Review** | code-review, human-approval | Code Reviewer + Human |
-| **Rework** | rework-development | Developer |
+| **Rework** | rework-development, qa-evaluation | Developer, QA Evaluator (full reset — same flow as In Progress) |
 | **Merging** | merge-and-deploy | DevOps |
 | **Done** | — | — |
 
@@ -419,7 +419,7 @@ Tracker state transitions happen at phase boundaries:
 - `Todo → In Progress`: When Developer phase starts
 - `In Progress → Human Review`: When QA gate passes
 - `In Progress → Rework`: When QA gate fails or agent error
-- `Human Review → Rework`: When reviewer requests changes
+- `Human Review → Rework`: When Code Reviewer finds critical issues (Symphony-initiated; non-critical findings are advisory — human decides)
 - `Human Review → Merging`: When human approves
 - `Rework → In Progress`: When Developer phase restarts (fresh branch from main)
 - `Merging → Human Review`: When CI gate fails
