@@ -1,0 +1,60 @@
+test_cases:
+  - id: "vac-tc-001"
+    description: "All AC satisfied with full test evidence"
+    input:
+      acceptance_criteria:
+        - { id: "AC-1", text: "Password must be 8-64 characters", testable: true }
+        - { id: "AC-2", text: "Must contain uppercase letter and number", testable: true }
+      test_results:
+        passed: ["test_password_min_length", "test_password_max_length", "test_password_uppercase_required", "test_password_number_required"]
+        failed: []
+      git_diff: "diff --git a/src/auth/validate.ts ..."
+    expected:
+      satisfied: 2
+      partial: 0
+      unmet: 0
+      verdict: "PASS"
+
+  - id: "vac-tc-002"
+    description: "Mixed results — one PARTIAL (code but no test)"
+    input:
+      acceptance_criteria:
+        - { id: "AC-1", text: "Password must be 8-64 characters", testable: true }
+        - { id: "AC-2", text: "Must show error for breached passwords", testable: true }
+      test_results:
+        passed: ["test_password_length"]
+        failed: []
+      git_diff: "diff --git a/src/auth/validate.ts ... +checkBreachedPassword()"
+    expected:
+      satisfied: 1
+      partial: 1
+      unmet: 0
+      verdict: "FAIL"
+
+  - id: "vac-tc-003"
+    description: "Keyword match but wrong test body — should not be SATISFIED"
+    input:
+      acceptance_criteria:
+        - { id: "AC-1", text: "User can reset password via email link", testable: true }
+      test_results:
+        passed: ["test_password_validation"]
+        failed: []
+      git_diff: "diff --git a/src/auth/validate.ts ..."
+    expected:
+      verdict: "FAIL"
+      note: "test_password_validation tests validation, not reset flow — keyword overlap is misleading"
+
+  - id: "vac-tc-004"
+    description: "Zero test evidence — all UNMET"
+    input:
+      acceptance_criteria:
+        - { id: "AC-1", text: "Dashboard loads within 2 seconds", testable: true }
+        - { id: "AC-2", text: "Dashboard shows user's recent activity", testable: true }
+      test_results:
+        passed: []
+        failed: []
+      git_diff: ""
+    expected:
+      satisfied: 0
+      unmet: 2
+      verdict: "FAIL"

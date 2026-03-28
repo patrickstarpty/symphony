@@ -1,0 +1,40 @@
+test_cases:
+  - id: "cf-tc-001"
+    description: "Three failures: real bug + flaky + env issue"
+    input:
+      failed_tests:
+        - { name: "test_payment_retry", error: "AssertionError: Expected 3 got 0" }
+        - { name: "test_ws_reconnect", error: "Timeout: 5000ms" }
+        - { name: "test_db_rollback", error: "ECONNREFUSED 127.0.0.1:5432" }
+      test_command: "npm test"
+      retry_count: 2
+    expected:
+      real_bugs: 1
+      flaky: 1
+      env_issues: 1
+      verdict: "FAIL"
+
+  - id: "cf-tc-002"
+    description: "All failures are environment issues — should PASS"
+    input:
+      failed_tests:
+        - { name: "test_api_integration", error: "ECONNREFUSED 127.0.0.1:8080" }
+        - { name: "test_redis_cache", error: "redis connection refused" }
+      test_command: "pytest"
+      retry_count: 2
+    expected:
+      real_bugs: 0
+      env_issues: 2
+      verdict: "PASS"
+
+  - id: "cf-tc-003"
+    description: "Flaky test that passes on retry"
+    input:
+      failed_tests:
+        - { name: "test_concurrent_writes", error: "Timeout: 10000ms" }
+      test_command: "jest --runInBand"
+      retry_count: 2
+    expected:
+      flaky: 1
+      real_bugs: 0
+      verdict: "PASS"

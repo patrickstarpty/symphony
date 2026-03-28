@@ -1,0 +1,22 @@
+assertions:
+  - test_case: "vac-tc-001"
+    checks:
+      - { field: "verdict", operator: "equals", value: "PASS" }
+      - { field: "satisfied", operator: "equals", value: 2 }
+      - { field: "partial", operator: "equals", value: 0 }
+
+  - test_case: "vac-tc-002"
+    checks:
+      - { field: "verdict", operator: "equals", value: "FAIL" }
+      - { field: "partial", operator: "gte", value: 1 }
+
+  - test_case: "vac-tc-003"
+    checks:
+      - { field: "verdict", operator: "equals", value: "FAIL" }
+      - { field: "criteria[0].status", operator: "not_equals", value: "SATISFIED" }
+
+  - test_case: "vac-tc-004"
+    checks:
+      - { field: "verdict", operator: "equals", value: "FAIL" }
+      - { field: "unmet", operator: "equals", value: 2 }
+      - { field: "satisfied", operator: "equals", value: 0 }

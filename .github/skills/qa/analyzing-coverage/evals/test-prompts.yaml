@@ -1,0 +1,48 @@
+test_cases:
+  - id: "cov-tc-001"
+    description: "High coverage — should PASS"
+    input:
+      coverage_data:
+        lines: 92.5
+        branches: 85.0
+        functions: 95.0
+        files:
+          - { path: "src/payments/process.ts", lines: 88.0 }
+          - { path: "src/utils/format.ts", lines: 98.0 }
+      threshold: 80
+    expected:
+      verdict: "PASS"
+      gaps_count: 0
+
+  - id: "cov-tc-002"
+    description: "Low coverage — should FAIL with gaps"
+    input:
+      coverage_data:
+        lines: 62.0
+        branches: 45.0
+        functions: 70.0
+        files:
+          - { path: "src/auth/login.ts", lines: 40.0 }
+          - { path: "src/payments/refund.ts", lines: 55.0 }
+          - { path: "src/utils/logger.ts", lines: 72.0 }
+      threshold: 80
+    expected:
+      verdict: "FAIL"
+      gaps_count_gte: 2
+      critical_or_high_gap_exists: true
+
+  - id: "cov-tc-003"
+    description: "Medium coverage on critical component — risk-aware verdict"
+    input:
+      coverage_data:
+        lines: 78.0
+        branches: 65.0
+        functions: 82.0
+        files:
+          - { path: "src/payments/charge.ts", lines: 75.0 }
+          - { path: "src/auth/oauth.ts", lines: 68.0 }
+      threshold: 80
+      component_criticality: "critical"
+    expected:
+      verdict: "FAIL"
+      gaps_contain_risk: "critical"

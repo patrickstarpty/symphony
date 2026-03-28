@@ -1,0 +1,45 @@
+test_cases:
+  - id: "pr-tc-001"
+    description: "Password validation with one ambiguous criterion"
+    input:
+      issue_description: |
+        Add password validation to the signup form.
+        - Password must be 8-64 characters
+        - Must contain at least one uppercase letter and one number
+        - Should display appropriate error messages
+        - Must not allow previously breached passwords (HaveIBeenPwned API)
+    expected:
+      acceptance_criteria_count: 4
+      testable_count: 3
+      ambiguity_flags: ["AC-3: 'appropriate' is vague"]
+
+  - id: "pr-tc-002"
+    description: "Clear well-structured AC with no ambiguity"
+    input:
+      issue_description: |
+        ## Acceptance Criteria
+        - Given a user on the login page, when they enter valid credentials, then they are redirected to /dashboard
+        - Given a user on the login page, when they enter invalid credentials, then they see "Invalid email or password" error
+        - Given a user who is already logged in, when they visit /login, then they are redirected to /dashboard
+    expected:
+      acceptance_criteria_count: 3
+      testable_count: 3
+      ambiguity_flags: []
+
+  - id: "pr-tc-003"
+    description: "Issue with critical missing information"
+    input:
+      issue_description: |
+        Implement the payment processing feature. Users should be able to pay with credit cards and the system should handle errors gracefully.
+    expected:
+      acceptance_criteria_count_gte: 1
+      ambiguity_flags_contain: ["gracefully"]
+      missing_contain: ["error message specification", "rate limiting"]
+
+  - id: "pr-tc-004"
+    description: "Empty issue description"
+    input:
+      issue_description: ""
+    expected:
+      acceptance_criteria_count: 0
+      missing_contain: ["No acceptance criteria found"]

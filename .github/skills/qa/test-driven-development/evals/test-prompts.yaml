@@ -1,0 +1,38 @@
+test_cases:
+  - id: "tdd-tc-001"
+    description: "Simple single-AC feature: password length validation"
+    input:
+      acceptance_criteria:
+        - { id: "AC-1", text: "Password must be 8-64 characters", testable: true }
+      framework: "jest"
+    expected:
+      test_cases_count_gte: 4
+      techniques_used: ["boundary_value_analysis"]
+      boundaries: [7, 8, 64, 65]
+      tdd_phases: ["red", "verify_red", "green", "verify_green", "refactor"]
+
+  - id: "tdd-tc-002"
+    description: "Multi-AC feature: login flow with 3 criteria"
+    input:
+      acceptance_criteria:
+        - { id: "AC-1", text: "Valid credentials redirect to /dashboard", testable: true }
+        - { id: "AC-2", text: "Invalid credentials show error message", testable: true }
+        - { id: "AC-3", text: "Already logged-in user redirected from /login", testable: true }
+      framework: "playwright"
+    expected:
+      test_cases_count_gte: 3
+      test_files_count_gte: 1
+      all_ac_covered: true
+
+  - id: "tdd-tc-003"
+    description: "Boundary-heavy feature: age-based insurance discount"
+    input:
+      acceptance_criteria:
+        - { id: "AC-1", text: "Customers aged 25-65 get standard rate", testable: true }
+        - { id: "AC-2", text: "Customers under 25 pay 15% surcharge", testable: true }
+        - { id: "AC-3", text: "Customers over 65 pay 10% surcharge", testable: true }
+      framework: "pytest"
+    expected:
+      test_cases_count_gte: 8
+      techniques_used: ["equivalence_partitioning", "boundary_value_analysis"]
+      boundaries: [24, 25, 65, 66]
