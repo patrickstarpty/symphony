@@ -1,0 +1,39 @@
+assertions:
+  - test_id: "sr-tc-001"
+    checks:
+      - path: "selected_count"
+        type: "equals"
+        value: 1
+      - path: "confidence"
+        type: "equals"
+        value: "high"
+      - path: "selected_tests[0].id"
+        type: "equals"
+        value: "test-1"
+      - path: "estimated_time_min"
+        type: "number_lte"
+        value: 5
+
+  - test_id: "sr-tc-002"
+    checks:
+      - path: "selected_count"
+        type: "number_gte"
+        value: 2
+      - path: "confidence"
+        type: "equals"
+        value: "medium"
+      - path: "selected_tests"
+        type: "array_contains_id"
+        value: "test-auth"
+
+  - test_id: "sr-tc-003"
+    checks:
+      - path: "selected_count"
+        type: "number_gte"
+        value: 2
+      - path: "confidence"
+        type: "equals"
+        value: "high"
+      - path: "selected_tests"
+        type: "array_contains_id"
+        value: "payment-unit"

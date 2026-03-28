@@ -1,0 +1,93 @@
+test_cases:
+  - id: "rcq-tc-001"
+    description: "Spec compliant, good code quality"
+    input:
+      git_diff: |
+        diff --git a/src/auth/validator.ts
+        +++ b/src/auth/validator.ts
+        +export function validatePassword(password: string): boolean {
+        +  if (!password || password.length < 8) return false;
+        +  if (!password.match(/[A-Z]/)) return false;
+        +  return password.match(/[0-9]/) !== null;
+        +}
+      qa_report:
+        pass_rate: "PASS"
+        coverage: "PASS"
+        acceptance: "PASS"
+      acceptance_criteria:
+        - id: "AC-1"
+          text: "Password must be 8-64 characters"
+        - id: "AC-2"
+          text: "Must contain at least one uppercase letter and one number"
+    expected:
+      stage1_verdict: "PASS"
+      stage2_verdict: "APPROVE"
+      final_verdict: "APPROVE"
+
+  - id: "rcq-tc-002"
+    description: "Missing AC implementation"
+    input:
+      git_diff: |
+        diff --git a/src/payment/processor.ts
+        +++ b/src/payment/processor.ts
+        +export async function processPayment(amount: number) {
+        +  return this.gateway.charge(amount);
+        +}
+      qa_report:
+        pass_rate: "PASS"
+      acceptance_criteria:
+        - id: "AC-1"
+          text: "Validate amount is positive"
+        - id: "AC-2"
+          text: "Return transaction ID"
+    expected:
+      stage1_verdict: "FAIL"
+      uncovered:
+        - "AC-1"
+      final_verdict: "REQUEST_CHANGES"
+
+  - id: "rcq-tc-003"
+    description: "High-quality code quality"
+    input:
+      git_diff: |
+        diff --git a/src/utils/helpers.ts
+        +++ b/src/utils/helpers.ts
+        +function calculateTotal(items: Item[]): number {
+        +  return items.reduce((sum, item) => sum + item.price, 0);
+        +}
+        +
+        +function filterActive(items: Item[]): Item[] {
+        +  return items.filter(item => item.active);
+        +}
+      qa_report:
+        pass_rate: "PASS"
+        coverage: "PASS"
+        acceptance: "PASS"
+    expected:
+      stage2_quality_issues: []
+      stage2_verdict: "APPROVE"
+
+  - id: "rcq-tc-004"
+    description: "Code quality issues: long function, deep nesting"
+    input:
+      git_diff: |
+        diff --git a/src/logic/complex.ts
+        +++ b/src/logic/complex.ts
+        +function handleRequest(req) {
+        +  if (req.user) {
+        +    if (req.user.authenticated) {
+        +      if (req.body.data) {
+        +        if (req.body.data.length > 0) {
+        +          // ... 45 lines of processing logic ...
+        +        }
+        +      }
+        +    }
+        +  }
+        +}
+      qa_report:
+        pass_rate: "PASS"
+        coverage: "PASS"
+        acceptance: "PASS"
+    expected:
+      stage2_quality_issues_count_gte: 1
+      stage2_verdict: "COMMENT"

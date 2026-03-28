@@ -1,0 +1,36 @@
+assertions:
+  - test_id: "hbt-tc-001"
+    checks:
+      - path: "healed_tests"
+        type: "array_length"
+        value: 1
+      - path: "unhealed_tests"
+        type: "array_length"
+        value: 0
+      - path: "confidence"
+        type: "equals"
+        value: "high"
+      - path: "patches[0].new"
+        type: "contains"
+        value: "submit-btn"
+
+  - test_id: "hbt-tc-002"
+    checks:
+      - path: "healed_tests"
+        type: "array_length"
+        value: 0
+      - path: "unhealed_tests"
+        type: "array_length"
+        value: 1
+      - path: "confidence"
+        type: "equals"
+        value: "medium"
+
+  - test_id: "hbt-tc-003"
+    checks:
+      - path: "unhealed_tests"
+        type: "array_length"
+        value: 1
+      - path: "confidence"
+        type: "equals"
+        value: "low"

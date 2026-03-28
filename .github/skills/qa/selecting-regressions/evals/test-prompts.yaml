@@ -1,0 +1,85 @@
+test_cases:
+  - id: "sr-tc-001"
+    description: "Narrow change: single utility function"
+    input:
+      git_diff: |
+        diff --git a/src/utils/validators.ts
+        +++ b/src/utils/validators.ts
+        +export function isValidEmail(email: string): boolean {
+        +  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+        +}
+      test_catalog:
+        tests:
+          - id: "test-1"
+            module: "src/utils/validators"
+            tags: ["unit"]
+            estimated_time_ms: 500
+          - id: "test-2"
+            module: "src/api"
+            tags: ["smoke"]
+            estimated_time_ms: 5000
+      risk_score:
+        risk_level: "low"
+    expected:
+      selected_count: 1
+      confidence: "high"
+      includes:
+        - "test-1"
+      skips:
+        - "test-2"
+
+  - id: "sr-tc-002"
+    description: "Broad infrastructure change: dependency upgrade"
+    input:
+      git_diff: |
+        diff --git a/package.json
+        +++ b/package.json
+        -"express": "4.17.1"
+        +"express": "4.18.0"
+      test_catalog:
+        tests:
+          - id: "test-smoke"
+            module: "all"
+            tags: ["smoke"]
+            estimated_time_ms: 10000
+          - id: "test-api"
+            module: "src/api"
+            tags: ["integration"]
+            estimated_time_ms: 5000
+          - id: "test-auth"
+            module: "src/auth"
+            tags: ["critical"]
+            estimated_time_ms: 3000
+      risk_score:
+        risk_level: "high"
+    expected:
+      selected_count_gte: 2
+      confidence: "medium"
+      includes:
+        - "test-smoke"
+        - "test-auth"
+
+  - id: "sr-tc-003"
+    description: "Cross-module: payment processor change"
+    input:
+      git_diff: |
+        diff --git a/src/payment/processor.ts
+      test_catalog:
+        tests:
+          - id: "payment-unit"
+            module: "src/payment"
+            tags: ["unit"]
+          - id: "order-integration"
+            module: "src/order"
+            tags: ["integration"]
+          - id: "api-smoke"
+            module: "src/api"
+            tags: ["smoke"]
+      risk_score:
+        risk_level: "critical"
+    expected:
+      selected_count_gte: 2
+      confidence: "high"
+      includes:
+        - "payment-unit"
+        - "api-smoke"

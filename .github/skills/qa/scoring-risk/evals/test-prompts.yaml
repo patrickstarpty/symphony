@@ -1,0 +1,61 @@
+test_cases:
+  - id: "sr-tc-001"
+    description: "Critical component, small change scope"
+    input:
+      git_diff: |
+        diff --git a/src/payment/processor.ts b/src/payment/processor.ts
+        index abc123..def456 100644
+        --- a/src/payment/processor.ts
+        +++ b/src/payment/processor.ts
+        @@ -10,6 +10,10 @@ export class PaymentProcessor {
+           async processPayment(amount: number) {
+        +    if (amount < 0) {
+        +      throw new Error('Amount must be positive');
+        +    }
+             return this.gateway.charge(amount);
+           }
+      issue_metadata:
+        component: payment
+        title: "Add negative amount validation"
+    expected:
+      risk_score_gte: 60
+      risk_level: "high"
+      factors:
+        scope_score: 5
+        criticality_score: 35
+      thresholds:
+        coverage_gte: 85
+
+  - id: "sr-tc-002"
+    description: "Low-risk utility change, broad scope"
+    input:
+      git_diff: |
+        diff --git a/src/utils/helpers.ts b/src/utils/helpers.ts
+        index abc123..def456 100644
+        --- a/src/utils/helpers.ts
+        +++ b/src/utils/helpers.ts
+        @@ -1,50 +1,80 @@
+         // Major refactor of utility functions
+      issue_metadata:
+        title: "Refactor helpers for performance"
+    expected:
+      risk_score_lte: 30
+      risk_level: "low"
+      factors:
+        criticality_score: 10
+
+  - id: "sr-tc-003"
+    description: "High defect history component"
+    input:
+      git_diff: |
+        diff --git a/src/api/legacy-endpoint.ts b/src/api/legacy-endpoint.ts
+      issue_metadata:
+        title: "Fix legacy API endpoint"
+      defect_history:
+        "src/api/legacy-endpoint.ts":
+          count: 12
+          density: 0.08
+    expected:
+      risk_score_gte: 50
+      factors:
+        defect_score_gte: 15

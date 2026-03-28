@@ -1,0 +1,76 @@
+test_cases:
+  - id: "ad-tc-001"
+    description: "Pattern detection: recurring validation issue"
+    input:
+      classified_defects:
+        - defect_id: "FAIL-001"
+          component: "payment"
+          root_cause: "data"
+          error_snippet: "Invalid amount: must be positive"
+        - defect_id: "FAIL-002"
+          component: "payment"
+          root_cause: "data"
+          error_snippet: "Amount validation failed"
+        - defect_id: "FAIL-003"
+          component: "payment"
+          root_cause: "data"
+          error_snippet: "Negative amount rejected"
+        - defect_id: "FAIL-004"
+          component: "payment"
+          root_cause: "data"
+          error_snippet: "Amount must be > 0"
+        - defect_id: "FAIL-005"
+          component: "payment"
+          root_cause: "data"
+          error_snippet: "Range check failed"
+    expected:
+      patterns_count_gte: 1
+      patterns:
+        - component: "payment"
+          root_cause: "data"
+          frequency: 5
+
+  - id: "ad-tc-002"
+    description: "Hotspot identification: high defect density"
+    input:
+      classified_defects:
+        - defect_id: "H-001"
+          component: "legacy-api"
+          root_cause: "integration"
+        - defect_id: "H-002"
+          component: "legacy-api"
+          root_cause: "logic"
+        - defect_id: "H-003"
+          component: "legacy-api"
+          root_cause: "integration"
+        - defect_id: "H-004"
+          component: "legacy-api"
+          root_cause: "config"
+        - defect_id: "H-005"
+          component: "legacy-api"
+          root_cause: "logic"
+        - defect_id: "H-006"
+          component: "new-service"
+          root_cause: "logic"
+    expected:
+      hotspots_count_gte: 1
+      hotspots:
+        - component: "legacy-api"
+          defect_count: 5
+
+  - id: "ad-tc-003"
+    description: "Insufficient data: no patterns (< 5 points)"
+    input:
+      classified_defects:
+        - defect_id: "I-001"
+          component: "util"
+          root_cause: "logic"
+        - defect_id: "I-002"
+          component: "util"
+          root_cause: "data"
+        - defect_id: "I-003"
+          component: "other"
+          root_cause: "logic"
+    expected:
+      patterns_count: 0
+      note: "Insufficient data points for pattern detection"
