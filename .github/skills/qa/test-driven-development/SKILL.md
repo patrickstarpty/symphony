@@ -26,9 +26,18 @@ output_schema:
 
 # test-driven-development (QA Extension)
 
-> **Loading:** This extension loads *in addition to* the Superpowers TDD skill at `.github/skills/test-driven-development/`. On conflict, Superpowers wins. This skill only adds net-new content under `## QA Enhancements` headers.
+> **Loading:** This extension loads *in addition to* the Superpowers TDD skill at `.github/skills/test-driven-development/`. On conflict, Superpowers wins. This skill adds net-new QA content only.
 
-## QA Enhancements
+## When to Use
+
+Invoke during any coding task after `parsing-requirements` has produced structured acceptance criteria. This extension supplements the Superpowers TDD skill — do not replace it. Use this skill when:
+- AC have been parsed and need to be translated into a full test case matrix
+- Insurance/finance domain test patterns are needed (equivalence partitions for policy/claim data)
+- Framework-specific test scaffolding is required (Jest, pytest, Playwright, JUnit)
+
+Do NOT invoke this skill for: configuration-only changes, generated code (protobuf/OpenAPI), pure infrastructure work.
+
+## Instructions
 
 ### 1. Test Case Generation from AC
 

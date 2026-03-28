@@ -60,7 +60,7 @@ def detect(criteria: list[dict]) -> list[dict]:
         text_lower = text.lower()
 
         for pattern, suggestion in VAGUE_VERBS:
-            if re.search(rf"\b{pattern}\b", text_lower):
+            if re.search(rf"\b{pattern}\w*\b", text_lower):
                 flags.append({
                     "id": ac_id,
                     "signal": pattern.replace(".*", " "),
