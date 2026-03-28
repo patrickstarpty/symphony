@@ -1,0 +1,35 @@
+// AUTO-GENERATED PAGE OBJECT — Do not edit
+// Page: {{ page_name }}
+
+import { Page, Locator } from '@playwright/test';
+
+export class {{ page_class_name }} {
+  constructor(readonly page: Page) {}
+
+  // Locators
+  {% for element in elements %}
+  private {{ element.name }}(): Locator {
+    return this.page.locator('{{ element.selector }}');
+  }
+  {% endfor %}
+
+  // Actions
+  {% for action in actions %}
+  async {{ action.name }}({% if action.param %}{{ action.param_name }}: {{ action.param_type }}{% endif %}): Promise<void> {
+    {% if action.action_type == 'fill' %}
+    await this.{{ action.locator }}().fill({{ action.param_name }});
+    {% elsif action.action_type == 'click' %}
+    await this.{{ action.locator }}().click();
+    {% elsif action.action_type == 'select' %}
+    await this.{{ action.locator }}().selectOption({{ action.param_name }});
+    {% endif %}
+  }
+  {% endfor %}
+
+  // Assertions
+  {% for assertion in assertions %}
+  async {{ assertion.name }}(): Promise<{{ assertion.return_type }}> {
+    return await this.{{ assertion.locator }}().{% if assertion.return_type == 'boolean' %}isVisible(){% elsif assertion.return_type == 'string' %}textContent(){% endif %};
+  }
+  {% endfor %}
+}

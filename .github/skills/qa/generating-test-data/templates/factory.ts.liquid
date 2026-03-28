@@ -1,0 +1,33 @@
+// AUTO-GENERATED TEST FACTORY — Do not edit
+// Entity: {{ entity_type }}
+
+import { Faker } from '@faker-js/faker';
+
+interface {{ entity_type | capitalize }} {
+  {% for key, type in schema %}
+  {{ key }}: {{ type }};
+  {% endfor %}
+}
+
+export class {{ entity_type | capitalize }}Factory {
+  private faker: Faker;
+
+  constructor(seed?: number) {
+    this.faker = new Faker({ seed });
+  }
+
+  create(overrides?: Partial<{{ entity_type | capitalize }}>): {{ entity_type | capitalize }} {
+    const base: {{ entity_type | capitalize }} = {
+      {% for fixture in fixtures limit: 1 %}
+      {% for key, value in fixture %}
+      {{ key }}: {% if value is string %}'{{ value }}'{% else %}{{ value }}{% endif %},
+      {% endfor %}
+      {% endfor %}
+    };
+    return { ...base, ...overrides };
+  }
+
+  createMany(count: number, overrides?: Partial<{{ entity_type | capitalize }}>): {{ entity_type | capitalize }}[] {
+    return Array.from({ length: count }).map(() => this.create(overrides));
+  }
+}

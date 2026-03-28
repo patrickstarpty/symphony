@@ -1,0 +1,24 @@
+assertions:
+  - test_case: "gtd-tc-001"
+    checks:
+      - { field: "fixtures", operator: "length_equals", value: 5 }
+      - { field: "fixtures[0].id", operator: "matches", value: "POL-" }
+      - { field: "pii_audit.pii_findings", operator: "equals", value: 0 }
+      - { field: "distribution_report", operator: "exists" }
+
+  - test_case: "gtd-tc-002"
+    checks:
+      - { field: "pii_audit.findings_by_pattern.email_real", operator: "equals", value: 1 }
+      - { field: "fixtures[0].customer_email", operator: "matches", value: "test_" }
+      - { field: "pii_audit.pii_findings", operator: "gte", value: 1 }
+
+  - test_case: "gtd-tc-003"
+    checks:
+      - { field: "verdict", operator: "equals", value: "synthetic" }
+      - { field: "warnings", operator: "contains", value: "coefficient of variation" }
+
+  - test_case: "gtd-tc-004"
+    checks:
+      - { field: "output", operator: "contains", value: "class PolicyFactory" }
+      - { field: "output", operator: "contains", value: "create(" }
+      - { field: "output", operator: "contains", value: "createMany(" }

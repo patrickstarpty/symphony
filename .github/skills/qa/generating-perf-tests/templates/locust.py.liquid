@@ -1,0 +1,36 @@
+# AUTO-GENERATED LOCUST LOAD TEST — Do not edit
+# SLA: p95<{{ target_sla.p95_latency_ms }}ms, Error<{{ target_sla.error_rate_pct }}%
+
+from locust import HttpUser, task, between
+import time
+
+BASE_URL = '{{ base_url | default: "http://localhost:3000" }}'
+
+class InsuranceUser(HttpUser):
+    wait_time = between({{ load_profile.think_time_seconds }}, {{ load_profile.think_time_seconds | plus: 2 }})
+    host = BASE_URL
+
+    {% for endpoint in endpoints %}
+    @task({{ endpoint.weight | default: 1 }})
+    def {{ endpoint.name }}(self):
+        """{{ endpoint.description }}"""
+        self.client.{{ endpoint.method }}('{{ endpoint.path }}', timeout=10)
+    {% endfor %}
+
+class LoadTestShape:
+    """Custom load shape for ramp-up profile"""
+
+    def tick(self):
+        run_time = self.get_run_time()
+
+        {% for stage in load_profile.stages %}
+        # {{ stage.description }}
+        if run_time < {{ stage.duration_seconds }}:
+            return ({{ stage.target_vus }}, 1)
+
+        {% endfor %}
+        return None  # Stop test
+
+if __name__ == '__main__':
+    # Run: locust -f this_file.py --headless -u {{ load_profile.stages[-1].target_vus }} -r 10
+    pass

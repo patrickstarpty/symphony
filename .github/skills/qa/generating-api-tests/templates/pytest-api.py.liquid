@@ -1,0 +1,37 @@
+# AUTO-GENERATED API TEST SUITE (PYTEST) — Do not edit
+
+import os
+import pytest
+import requests
+
+BASE_URL = os.getenv('API_BASE_URL', 'http://localhost:3000')
+
+{% for endpoint in endpoints %}
+class Test{{ endpoint.name | capitalize }}:
+    """Tests for {{ endpoint.method | upcase }} {{ endpoint.path }}"""
+
+    {% for scenario in endpoint.scenarios %}
+    def test_{{ scenario.name | replace(' ', '_') | downcase }}(self):
+        """{{ scenario.description }}"""
+        # Arrange
+        url = f"{BASE_URL}{{ endpoint.path }}"
+        {% if scenario.request_body %}
+        payload = {{ scenario.request_body | json }}
+        {% endif %}
+
+        # Act
+        response = requests.{{ endpoint.method | downcase }}(
+            url,
+            json=payload if 'payload' in locals() else None,
+        )
+
+        # Assert
+        assert response.status_code == {{ scenario.expected_status }}
+        {% if scenario.assertions %}
+        data = response.json()
+        {% for assertion in scenario.assertions %}
+        assert '{{ assertion.property }}' in data
+        {% endfor %}
+        {% endif %}
+    {% endfor %}
+{% endfor %}

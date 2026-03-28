@@ -1,0 +1,25 @@
+assertions:
+  - test_case: "gmt-tc-001"
+    checks:
+      - { field: "platform", operator: "equals", value: "ios" }
+      - { field: "confidence", operator: "gte", value: 0.8 }
+      - { field: "detected_files", operator: "contains", value: "ios/Runner.xcworkspace" }
+
+  - test_case: "gmt-tc-002"
+    checks:
+      - { field: "test_count", operator: "gte", value: 2 }
+      - { field: "code", operator: "contains", value: "XCUIDevice.shared.orientation" }
+      - { field: "code", operator: "not_contains", value: "// hardcoded coordinate" }
+
+  - test_case: "gmt-tc-003"
+    checks:
+      - { field: "test_count", operator: "gte", value: 2 }
+      - { field: "code", operator: "contains", value: "R.id." }
+      - { field: "code", operator: "contains", value: "hasContentDescription" }
+
+  - test_case: "gmt-tc-004"
+    checks:
+      - { field: "test_count", operator: "gte", value: 2 }
+      - { field: "code", operator: "contains", value: "setOrientation" }
+      - { field: "supports_platforms", operator: "contains", value: "iOS" }
+      - { field: "supports_platforms", operator: "contains", value: "Android" }

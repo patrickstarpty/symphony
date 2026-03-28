@@ -1,0 +1,25 @@
+assertions:
+  - test_case: "gpt-tc-001"
+    checks:
+      - { field: "pom_class_name", operator: "matches", value: "^[A-Z][a-zA-Z]*Page$" }
+      - { field: "locators", operator: "length_gte", value: 3 }
+      - { field: "locators[0].selector", operator: "matches", value: "\\[data-testid" }
+      - { field: "selector_audit.with_data_testid", operator: "gte", value: 1 }
+
+  - test_case: "gpt-tc-002"
+    checks:
+      - { field: "spec_beforeEach", operator: "exists" }
+      - { field: "spec_tests[0].sections.Arrange", operator: "exists" }
+      - { field: "spec_tests[0].sections.Act", operator: "exists" }
+      - { field: "spec_tests[0].sections.Assert", operator: "exists" }
+
+  - test_case: "gpt-tc-003"
+    checks:
+      - { field: "selector_audit.with_issues", operator: "gte", value: 1 }
+      - { field: "selector_audit.recommendations[*].issues", operator: "contains", value: "data-testid" }
+
+  - test_case: "gpt-tc-004"
+    checks:
+      - { field: "locators[*].recommended", operator: "all_match", value: "data-testid" }
+      - { field: "locators[*].recommended", operator: "not_contains", value: "//" }
+      - { field: "locators[*].stability_score", operator: "all_gte", value: 0.8 }

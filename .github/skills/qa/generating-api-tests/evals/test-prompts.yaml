@@ -1,0 +1,50 @@
+test_cases:
+  - id: "gat-tc-001"
+    description: "Parse OpenAPI 3.x schema and extract all endpoints"
+    input:
+      schema_file: "openapi.yaml"
+      schema_format: "openapi"
+    expected:
+      total_endpoints: 5
+      auth_required_count: 2
+      endpoints_have_paths: true
+      endpoints_have_methods: true
+
+  - id: "gat-tc-002"
+    description: "Generate REST test suite with happy path and edge cases"
+    input:
+      endpoints:
+        - path: "/api/policies/:id"
+          method: "get"
+          auth_required: true
+    expected:
+      test_count: 3
+      includes_happy_path: true
+      includes_not_found: true
+      includes_unauthorized: true
+
+  - id: "gat-tc-003"
+    description: "Generate GraphQL query tests from SDL"
+    input:
+      schema_file: "schema.graphql"
+      operations:
+        - type: "Query"
+          name: "policies"
+    expected:
+      test_count: 1
+      validates_response: true
+      no_hardcoded_credentials: true
+
+  - id: "gat-tc-004"
+    description: "Analyze endpoints and classify risk level"
+    input:
+      endpoints:
+        - path: "/api/admin/users"
+          method: "delete"
+        - path: "/api/payment/charge"
+          method: "post"
+    expected:
+      delete_risk: "medium"
+      payment_risk: "critical"
+      high_risk_count: 1
+      critical_risk_count: 1

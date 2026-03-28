@@ -1,0 +1,25 @@
+assertions:
+  - test_case: "gat-tc-001"
+    checks:
+      - { field: "endpoints[*].path", operator: "all_exist" }
+      - { field: "endpoints[*].method", operator: "all_in", value: ["get", "post", "put", "delete", "patch"] }
+      - { field: "auth_required_count", operator: "gte", value: 1 }
+
+  - test_case: "gat-tc-002"
+    checks:
+      - { field: "tests", operator: "length_gte", value: 3 }
+      - { field: "tests[*].scenario", operator: "contains", value: "Happy path" }
+      - { field: "tests[*].scenario", operator: "contains", value: "Not found" }
+
+  - test_case: "gat-tc-003"
+    checks:
+      - { field: "tests[0].query", operator: "contains", value: "query policies" }
+      - { field: "tests[0].assertions[0]", operator: "matches", value: "data.policies" }
+      - { field: "code", operator: "not_contains", value: "Authorization: Bearer" }
+
+  - test_case: "gat-tc-004"
+    checks:
+      - { field: "analyses[0].risk_level", operator: "equals", value: "medium" }
+      - { field: "analyses[1].risk_level", operator: "equals", value: "critical" }
+      - { field: "high_risk_count", operator: "gte", value: 1 }
+      - { field: "critical_risk_count", operator: "gte", value: 1 }

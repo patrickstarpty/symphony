@@ -1,0 +1,41 @@
+// AUTO-GENERATED K6 LOAD TEST — Do not edit
+// SLA: p95<{{ target_sla.p95_latency_ms }}ms, Error<{{ target_sla.error_rate_pct }}%
+
+import http from 'k6/http';
+import { sleep, check } from 'k6';
+
+const BASE_URL = __ENV.BASE_URL || 'http://localhost:3000';
+
+export const options = {
+  stages: [
+    {% for stage in load_profile.stages %}
+    { duration: '{{ stage.duration_seconds }}s', target: {{ stage.target_vus }} }, // {{ stage.description }}
+    {% endfor %}
+  ],
+  thresholds: {
+    'http_req_duration': ['p(95)<{{ target_sla.p95_latency_ms }}'],
+    'http_req_failed': ['rate<{{ target_sla.error_rate_pct | divided_by: 100.0 }}'],
+  },
+};
+
+{% for endpoint in endpoints %}
+function test{{ endpoint.name | camelize }}() {
+  const res = http.{{ endpoint.method }}(`${BASE_URL}{{ endpoint.path }}`, {
+    headers: { 'Content-Type': 'application/json' },
+  });
+
+  check(res, {
+    '{{ endpoint.name }} status 200': (r) => r.status === 200,
+    '{{ endpoint.name }} latency < 500ms': (r) => r.timings.duration < 500,
+  });
+
+  sleep({{ load_profile.think_time_seconds }});
+}
+
+{% endfor %}
+
+export default function () {
+  {% for endpoint in endpoints %}
+  test{{ endpoint.name | camelize }}();
+  {% endfor %}
+}

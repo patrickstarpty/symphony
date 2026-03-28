@@ -1,0 +1,45 @@
+// AUTO-GENERATED ESPRESSO TEST SUITE — Do not edit
+
+import androidx.test.espresso.Espresso.onView
+import androidx.test.espresso.action.ViewActions.click
+import androidx.test.espresso.action.ViewActions.typeText
+import androidx.test.espresso.matcher.ViewMatchers.*
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Test
+import org.junit.runner.RunWith
+
+@RunWith(AndroidJUnit4::class)
+class {{ test_class_name }} {
+    {% for scenario in scenarios %}
+    @Test
+    fun {{ scenario.name | snakeCase }}() {
+        // Arrange
+        {% for setup in scenario.arrange %}
+        {{ setup }}
+        {% endfor %}
+
+        // Act
+        {% for action in scenario.act %}
+        {% if action.type == 'click' %}
+        onView(withId(R.id.{{ action.resource_id }}))
+            .perform(click())
+        {% elsif action.type == 'input' %}
+        onView(withId(R.id.{{ action.resource_id }}))
+            .perform(typeText("{{ action.value }}"))
+        {% endif %}
+        {% endfor %}
+
+        // Assert
+        {% for assertion in scenario.assertions %}
+        onView(withText("{{ assertion.text }}"))
+            .check(matches(isDisplayed()))
+        {% endfor %}
+    }
+    {% endfor %}
+
+    @Test
+    fun testAccessibility() {
+        onView(withId(R.id.profileImage))
+            .check(matches(hasContentDescription()))
+    }
+}

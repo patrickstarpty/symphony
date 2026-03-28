@@ -1,0 +1,56 @@
+// AUTO-GENERATED XCTEST SUITE — Do not edit
+// Screens: {{ screen_list | join: ', ' }}
+
+import XCTest
+
+class {{ test_class_name }}: XCTestCase {
+    var app: XCUIApplication!
+
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        app = XCUIApplication()
+        app.launch()
+    }
+
+    override func tearDownWithError() throws {
+        app = nil
+    }
+
+    {% for scenario in scenarios %}
+    func test{{ scenario.name | camelize }}() throws {
+        // Arrange
+        {% for setup in scenario.arrange %}
+        {{ setup }}
+        {% endfor %}
+
+        // Act
+        {% for action in scenario.act %}
+        {% if action.type == 'tap' %}
+        let {{ action.var_name }} = app.buttons.matching(NSPredicate(format: "identifier == '{{ action.identifier }}'")).firstMatch
+        {{ action.var_name }}.tap()
+        {% elsif action.type == 'input' %}
+        let {{ action.var_name }} = app.textFields.matching(NSPredicate(format: "identifier == '{{ action.identifier }}'")).firstMatch
+        {{ action.var_name }}.tap()
+        {{ action.var_name }}.typeText("{{ action.value }}")
+        {% endif %}
+        {% endfor %}
+
+        // Assert
+        {% for assertion in scenario.assertions %}
+        let {{ assertion.var_name }} = app.staticTexts["{{ assertion.text }}"]
+        let predicate = NSPredicate(format: "exists == true")
+        expectation(for: predicate, evaluatedWith: {{ assertion.var_name }}, handler: nil)
+        waitForExpectations(timeout: 5)
+        {% endfor %}
+    }
+    {% endfor %}
+
+    func testRotation() throws {
+        XCUIDevice.shared.orientation = .portrait
+        let button = app.buttons.element(boundBy: 0)
+        XCTAssert(button.exists)
+
+        XCUIDevice.shared.orientation = .landscapeRight
+        XCTAssert(button.exists)
+    }
+}

@@ -1,0 +1,20 @@
+// AUTO-GENERATED TEST FIXTURES — Do not edit
+
+export const test_data = {
+  {% for fixture in fixtures %}
+  {{ fixture.key }}: {
+    {% for field, value in fixture.data %}
+    {{ field }}: '{{ value }}',
+    {% endfor %}
+  },
+  {% endfor %}
+};
+
+export const mock_responses = {
+  {% for mock in mocks %}
+  {{ mock.endpoint }}: {
+    status: {{ mock.status }},
+    body: {{ mock.body | json }},
+  },
+  {% endfor %}
+};

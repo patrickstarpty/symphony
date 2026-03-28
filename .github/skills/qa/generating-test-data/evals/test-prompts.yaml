@@ -1,0 +1,49 @@
+test_cases:
+  - id: "gtd-tc-001"
+    description: "Generate 5 policy fixtures with insurance domain realism"
+    input:
+      domain: "insurance"
+      entity_type: "policy"
+      count: 5
+      output_format: "json"
+    expected:
+      fixture_count: 5
+      pii_audit_pass: true
+      has_distribution_report: true
+      fields_present: ["id", "policy_number", "premium_amount", "status"]
+
+  - id: "gtd-tc-002"
+    description: "PII sanitization detects and replaces real email patterns"
+    input:
+      domain: "insurance"
+      entity_type: "customer"
+      count: 3
+      fixture_with_real_email: "john.smith@company.com"
+    expected:
+      pii_audit_pass: true
+      email_sanitized: "test_*@test.example"
+      findings_by_pattern: { "email_real": 1 }
+
+  - id: "gtd-tc-003"
+    description: "Distribution validator detects unrealistic uniform random values"
+    input:
+      domain: "insurance"
+      entity_type: "policy"
+      count: 20
+      field: "premium_amount"
+      values: "uniform_random_1_to_10000"
+    expected:
+      verdict: "synthetic"
+      warnings_contain: ["coefficient of variation"]
+
+  - id: "gtd-tc-004"
+    description: "TypeScript factory template generates valid code"
+    input:
+      entity_type: "policy"
+      fixture_count: 5
+      template: "factory.ts"
+    expected:
+      output_contains: "PolicyFactory"
+      output_contains: "create("
+      output_contains: "createMany("
+      typescript_valid: true

@@ -1,0 +1,46 @@
+test_cases:
+  - id: "gmt-tc-001"
+    description: "Detect iOS platform from Xcode project structure"
+    input:
+      project_dir: "ios-app"
+      has_files:
+        - "ios/Runner.xcworkspace"
+        - "Podfile"
+    expected:
+      platform: "ios"
+      confidence_gte: 0.8
+      detected_files_count: 2
+
+  - id: "gmt-tc-002"
+    description: "Generate XCTest suite with rotation handling"
+    input:
+      platform: "ios"
+      screen_list: ["LoginScreen", "HomeScreen"]
+      test_scenarios:
+        - description: "User logs in and sees home screen"
+    expected:
+      test_count: 2
+      includes_rotation_test: true
+      no_hardcoded_coordinates: true
+
+  - id: "gmt-tc-003"
+    description: "Generate Espresso tests for Android"
+    input:
+      platform: "android"
+      screen_list: ["LoginActivity", "DashboardActivity"]
+      test_scenarios:
+        - description: "User enters credentials and submits"
+    expected:
+      test_count: 2
+      uses_resource_ids: true
+      includes_accessibility_test: true
+
+  - id: "gmt-tc-004"
+    description: "Generate Appium cross-platform tests"
+    input:
+      platform: "cross-platform"
+      screen_list: ["LoginPage"]
+    expected:
+      test_count: 2
+      includes_orientation_test: true
+      supports_both_ios_and_android: true
