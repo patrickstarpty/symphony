@@ -30,22 +30,29 @@ After all three evaluation skills have produced their outputs. This is the final
 
 ## Instructions
 
-1. Collect outputs from the three evaluation skills:
+1. **Dispatch the three evaluators in parallel using `dispatching-parallel-agents`.** They share no state and write to separate workpad sections — always run them concurrently:
+   - Agent A → `analyzing-coverage`
+   - Agent B → `validating-acceptance-criteria`
+   - Agent C → `classifying-test-failures`
+
+   **Script unavailable / single-agent context:** Run each skill sequentially in the order listed above.
+
+2. Collect outputs from the three evaluation skills:
    - **Pass Rate** from `classifying-test-failures`: verdict + real_bugs count
    - **Coverage** from `analyzing-coverage`: verdict + summary percentages
    - **Acceptance** from `validating-acceptance-criteria`: verdict + satisfied/partial/unmet counts
 
-2. Apply gate policy:
+3. Apply gate policy:
    - **strict:** ALL three dimensions must PASS → overall PASS. Any FAIL → overall FAIL.
    - **advisory** (default): Report all dimensions. No blocking — verdict is informational.
 
-3. Generate markdown report from `templates/qa-report.md.liquid`:
+4. Generate markdown report from `templates/qa-report.md.liquid`:
    - Header: issue ID, evaluator, overall verdict
    - Dimension table: score, threshold, status per dimension
    - Details: test summary, coverage gaps, AC traceability matrix
    - Advisory note: if advisory mode, state what would fail under strict
 
-4. Output markdown + structured verdict for programmatic consumption.
+5. Output markdown + structured verdict for programmatic consumption.
 
 ## Gate Policy Behavior
 

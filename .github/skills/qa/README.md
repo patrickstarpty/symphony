@@ -30,14 +30,16 @@ Issue → parsing-requirements
           ↓ (during coding)
         [commit + push]
           ↓ (post-coding)
-        ┌──────────────────────────────────┐
-        │ Run 3 evaluators IN PARALLEL     │
-        │  analyzing-coverage              │
-        │  validating-acceptance-criteria  │
-        │  classifying-test-failures       │
-        └──────────────┬───────────────────┘
-                       ↓
-                 generating-qa-report
+        ┌──────────────────────────────────────────────┐
+        │ Run 3 evaluators IN PARALLEL                 │
+        │  analyzing-coverage                          │
+        │  validating-acceptance-criteria              │
+        │  classifying-test-failures                   │
+        │                                              │
+        │  → Use dispatching-parallel-agents skill     │
+        └──────────────────────┬───────────────────────┘
+                               ↓
+                       generating-qa-report
                        ↓
                PASS? → reviewing-code-quality → PR
                FAIL? → fix gaps → re-run evaluators
