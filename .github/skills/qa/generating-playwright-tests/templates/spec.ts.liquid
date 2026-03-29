@@ -1,0 +1,33 @@
+// AUTO-GENERATED TEST SPEC — Do not edit
+// Scenario: {{ scenario_name }}
+
+import { test, expect } from '@playwright/test';
+import { {{ page_class_name }} } from './{{ page_file }}';
+
+test.describe('{{ scenario_name }}', () => {
+  let page: {{ page_class_name }};
+
+  test.beforeEach(async ({ page: rawPage }) => {
+    page = new {{ page_class_name }}(rawPage);
+    await rawPage.goto('{{ test_url }}');
+  });
+
+  {% for test_case in test_cases %}
+  test('{{ test_case.description }}', async () => {
+    // Arrange
+    {% for setup in test_case.arrange %}
+    {{ setup }}
+    {% endfor %}
+
+    // Act
+    {% for action in test_case.act %}
+    await page.{{ action }}();
+    {% endfor %}
+
+    // Assert
+    {% for assertion in test_case.assert %}
+    expect({{ assertion }}).toBeTruthy();
+    {% endfor %}
+  });
+  {% endfor %}
+});

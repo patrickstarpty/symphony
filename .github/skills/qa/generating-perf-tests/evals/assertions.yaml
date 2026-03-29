@@ -1,0 +1,31 @@
+assertions:
+  - test_case: "gpt-tc-001"
+    checks:
+      - { field: "profile_type", operator: "equals", value: "ramp-up" }
+      - { field: "stages", operator: "length_gte", value: 2 }
+      - { field: "stages[-1].target_vus", operator: "gte", value: 100 }
+      - { field: "think_time_seconds", operator: "gt", value: 0 }
+      - { field: "think_time_seconds", operator: "lt", value: 10 }
+
+  - test_case: "gpt-tc-002"
+    checks:
+      - { field: "code", operator: "contains", value: "stages" }
+      - { field: "code", operator: "contains", value: "p(95)<200" }
+      - { field: "code", operator: "contains", value: "rate<0" }
+      - { field: "code", operator: "not_contains", value: "http://localhost" }
+
+  - test_case: "gpt-tc-003"
+    checks:
+      - { field: "code", operator: "contains", value: "wait_time = between" }
+      - { field: "code", operator: "contains", value: "@task" }
+      - { field: "code", operator: "contains", value: "get_quote" }
+      - { field: "code", operator: "contains", value: "submit_claim" }
+
+  - test_case: "gpt-tc-004"
+    checks:
+      - { field: "p50_latency_ms", operator: "gte", value: 0 }
+      - { field: "p95_latency_ms", operator: "gte", value: 0 }
+      - { field: "p99_latency_ms", operator: "gte", value: 0 }
+      - { field: "throughput_rps", operator: "gt", value: 0 }
+      - { field: "error_rate_pct", operator: "gte", value: 0 }
+      - { field: "error_rate_pct", operator: "lte", value: 100 }

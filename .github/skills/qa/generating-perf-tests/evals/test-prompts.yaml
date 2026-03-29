@@ -1,0 +1,56 @@
+test_cases:
+  - id: "gpt-tc-001"
+    description: "Calculate ramp-up profile from SLA targets"
+    input:
+      target_p95_ms: 200
+      target_rps: 100
+      profile: "ramp-up"
+    expected:
+      profile_type: "ramp-up"
+      stages_count: 6
+      max_vus_gte: 100
+      think_time_range: [0.5, 5.0]
+
+  - id: "gpt-tc-002"
+    description: "Generate K6 load test with SLA assertions"
+    input:
+      endpoints:
+        - path: "/api/quotes"
+          method: "post"
+      load_profile: "ramp-up"
+      target_sla:
+        p95_latency_ms: 200
+        error_rate_pct: 0.5
+    expected:
+      code_contains: "stages"
+      code_contains_thresholds: "thresholds"
+      code_contains_p95: "p(95)<200"
+      no_hardcoded_url: true
+
+  - id: "gpt-tc-003"
+    description: "Generate Locust test with realistic think time"
+    input:
+      endpoints:
+        - name: "get_quote"
+          path: "/api/quotes"
+          method: "get"
+        - name: "submit_claim"
+          path: "/api/claims"
+          method: "post"
+      load_profile: "spike"
+    expected:
+      code_contains: "wait_time"
+      code_contains: "@task"
+      code_contains: "think_time"
+
+  - id: "gpt-tc-004"
+    description: "Collect baseline metrics for SLA comparison"
+    input:
+      url: "http://localhost:3000/api/quote"
+      requests: 100
+    expected:
+      has_p50_latency: true
+      has_p95_latency: true
+      has_p99_latency: true
+      has_throughput: true
+      error_rate_valid: true

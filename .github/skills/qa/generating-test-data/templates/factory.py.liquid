@@ -1,0 +1,40 @@
+# AUTO-GENERATED TEST FACTORY — Do not edit
+# Entity: {{ entity_type }}
+
+from dataclasses import dataclass, field, replace
+from datetime import date, datetime
+from typing import Optional, List
+from faker import Faker
+
+@dataclass
+class {{ entity_type | capitalize }}:
+    """{{ entity_type | capitalize }} fixture class."""
+    {% for fixture in fixtures limit: 1 %}
+    {% for key, value in fixture %}
+    {{ key }}: type = None
+    {% endfor %}
+    {% endfor %}
+
+
+class {{ entity_type | capitalize }}Factory:
+    """Factory for generating {{ entity_type }} test fixtures."""
+
+    def __init__(self, seed: Optional[int] = None):
+        self.faker = Faker()
+        if seed:
+            Faker.seed(seed)
+
+    def create(self, **overrides) -> {{ entity_type | capitalize }}:
+        """Create a single {{ entity_type }} fixture."""
+        base = {{ entity_type | capitalize }}(
+            {% for fixture in fixtures limit: 1 %}
+            {% for key, value in fixture %}
+            {{ key }}={% if value is string %}'{{ value }}'{% else %}{{ value }}{% endif %},
+            {% endfor %}
+            {% endfor %}
+        )
+        return replace(base, **overrides)
+
+    def create_many(self, count: int, **overrides) -> List[{{ entity_type | capitalize }}]:
+        """Create multiple {{ entity_type }} fixtures."""
+        return [self.create(**overrides) for _ in range(count)]

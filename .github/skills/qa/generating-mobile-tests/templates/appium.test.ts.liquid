@@ -1,0 +1,61 @@
+// AUTO-GENERATED APPIUM TEST SUITE — Do not edit
+// Platform: {{ platform }} | Screens: {{ screen_list | join: ', ' }}
+
+import { remote } from 'webdriverio';
+
+describe('Mobile App: {{ app_name }}', () => {
+  let driver;
+
+  before(async () => {
+    const opts = {
+      platformName: '{{ platform | upcase }}',
+      automationName: 'XCUITest', // or 'UIAutomator2' for Android
+      deviceName: '{{ device_name }}',
+      app: process.env.APP_PATH,
+    };
+    driver = await remote(opts);
+  });
+
+  after(async () => {
+    await driver.deleteSession();
+  });
+
+  {% for scenario in scenarios %}
+  it('{{ scenario.description }}', async () => {
+    {% for action in scenario.actions %}
+    // {{ action.description }}
+    {% if action.type == 'tap' %}
+    const element = await driver.$('{{ action.locator }}');
+    await element.click();
+    {% elsif action.type == 'input' %}
+    const input = await driver.$('{{ action.locator }}');
+    await input.clearValue();
+    await input.addValue('{{ action.value }}');
+    {% elsif action.type == 'swipe' %}
+    await driver.touchAction([
+      { action: 'press', x: {{ action.start_x }}, y: {{ action.start_y }} },
+      { action: 'moveTo', x: {{ action.end_x }}, y: {{ action.end_y }} },
+      'release'
+    ]);
+    {% endif %}
+    {% endfor %}
+
+    {% for assertion in scenario.assertions %}
+    // Assert
+    const result = await driver.$('{{ assertion.locator }}');
+    expect(await result.isDisplayed()).toBe(true);
+    {% endfor %}
+  });
+  {% endfor %}
+
+  it('should handle device rotation', async () => {
+    // Portrait
+    await driver.setOrientation('PORTRAIT');
+    const portraitElement = await driver.$('accessibility id:mainButton');
+    expect(await portraitElement.isDisplayed()).toBe(true);
+
+    // Landscape
+    await driver.setOrientation('LANDSCAPE');
+    expect(await portraitElement.isDisplayed()).toBe(true);
+  });
+});

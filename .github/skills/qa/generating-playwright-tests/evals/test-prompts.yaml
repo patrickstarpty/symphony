@@ -1,0 +1,45 @@
+test_cases:
+  - id: "gpt-tc-001"
+    description: "Generate Page Object Model for simple login form"
+    input:
+      page_html: "login_form.html"
+      test_scenarios:
+        - "User enters valid credentials and submits form"
+        - "User sees error message on invalid credentials"
+    expected:
+      pom_class_count: 1
+      has_locators: true
+      has_fill_action: true
+      has_click_action: true
+      selector_audit_pass: true
+
+  - id: "gpt-tc-002"
+    description: "Generate spec with AAA structure for form interaction"
+    input:
+      page_html: "form.html"
+      test_scenarios:
+        - "User fills email, password, clicks submit, sees success"
+    expected:
+      test_spec_count: 1
+      has_beforeEach: true
+      has_arrange_section: true
+      has_act_section: true
+      has_assert_section: true
+
+  - id: "gpt-tc-003"
+    description: "Selector analyzer flags missing data-testid on critical elements"
+    input:
+      page_html: "checkout.html"
+    expected:
+      selector_audit_issues: true
+      issues_contain: ["data-testid"]
+      stability_scores_exist: true
+
+  - id: "gpt-tc-004"
+    description: "Generated code uses stable selectors (data-testid > role > css)"
+    input:
+      page_html: "dashboard.html"
+    expected:
+      locators_use_data_testid: true
+      locators_prioritize_role: false
+      no_fragile_xpath: true

@@ -1,0 +1,32 @@
+// AUTO-GENERATED GraphQL TEST SUITE — Do not edit
+
+import { test, expect } from '@jest/globals';
+
+const BASE_URL = process.env.GRAPHQL_URL || 'http://localhost:3000/graphql';
+
+describe('GraphQL API', () => {
+  {% for operation in operations %}
+  test('{{ operation.type }}: {{ operation.name }}', async () => {
+    const {{ operation.type | downcase }}Query = `
+      {{ operation.type | downcase }} {{ operation.name }} {
+        {% for field in operation.fields %}
+        {{ field }}
+        {% endfor %}
+      }
+    `;
+
+    const response = await fetch(BASE_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: {{ operation.type | downcase }}Query }),
+    });
+
+    const { data, errors } = await response.json();
+    expect(errors).toBeUndefined();
+    expect(data).toBeDefined();
+    {% for assertion in operation.assertions %}
+    expect(data).toHaveProperty('{{ assertion }}');
+    {% endfor %}
+  });
+  {% endfor %}
+});

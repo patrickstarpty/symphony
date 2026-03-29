@@ -1,0 +1,38 @@
+// AUTO-GENERATED REST API TEST SUITE — Do not edit
+// API: {{ api_name }}
+
+import { test, expect } from '@jest/globals';
+
+const BASE_URL = process.env.API_BASE_URL || 'http://localhost:3000';
+
+describe('REST API: {{ api_name }}', () => {
+  {% for endpoint in endpoints %}
+  describe('{{ endpoint.method | upcase }} {{ endpoint.path }}', () => {
+    {% for scenario in endpoint.scenarios %}
+    test('{{ scenario.description }}', async () => {
+      // Arrange
+      const url = `${BASE_URL}{{ endpoint.path }}`;
+      const options = {
+        method: '{{ endpoint.method | upcase }}',
+        headers: { 'Content-Type': 'application/json' },
+      };
+      {% if scenario.request_body %}
+      options.body = JSON.stringify({{ scenario.request_body | json }});
+      {% endif %}
+
+      // Act
+      const response = await fetch(url, options);
+      const data = await response.json();
+
+      // Assert
+      expect(response.status).toBe({{ scenario.expected_status }});
+      {% if scenario.assertions %}
+      {% for assertion in scenario.assertions %}
+      expect(data).toHaveProperty('{{ assertion.property }}');
+      {% endfor %}
+      {% endif %}
+    });
+    {% endfor %}
+  });
+  {% endfor %}
+});

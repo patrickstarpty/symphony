@@ -1,0 +1,33 @@
+// AUTO-GENERATED GATLING SIMULATION — Do not edit
+// SLA: p95<{{ target_sla.p95_latency_ms }}ms, Error<{{ target_sla.error_rate_pct }}%
+
+import io.gatling.core.Predef._
+import io.gatling.http.Predef._
+import scala.concurrent.duration._
+
+class InsuranceLoadTest extends Simulation {
+
+  val httpProtocol = http
+    .baseUrl("{{ base_url | default: "http://localhost:3000" }}")
+    .acceptHeader("application/json")
+    .shareConnections
+
+  val scn = scenario("Insurance Load Test")
+    {% for endpoint in endpoints %}
+    .exec(http("{{ endpoint.name }}")
+      .{{ endpoint.method }}("{{ endpoint.path }}")
+      .check(status.is(200)))
+    .pause({{ load_profile.think_time_seconds }})
+    {% endfor %}
+
+  setUp(
+    scn.injectOpen(
+      {% for stage in load_profile.stages %}
+      rampOpenUsers({{ stage.target_vus }}) during ({{ stage.duration_seconds }} seconds),
+      {% endfor %}
+    ).protocols(httpProtocol)
+  ).assertions(
+    global.responseTime.percentile(95).lt({{ target_sla.p95_latency_ms }}),
+    global.successfulRequests.percent.gte({{ 100 | minus: target_sla.error_rate_pct }}),
+  )
+}
