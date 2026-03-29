@@ -1,0 +1,42 @@
+assertions:
+  - test_id: "rcq-tc-001"
+    checks:
+      - path: "stage1_spec_compliance.verdict"
+        type: "equals"
+        value: "PASS"
+      - path: "stage2_code_quality.verdict"
+        type: "equals"
+        value: "APPROVE"
+      - path: "verdict"
+        type: "equals"
+        value: "APPROVE"
+
+  - test_id: "rcq-tc-002"
+    checks:
+      - path: "stage1_spec_compliance.verdict"
+        type: "equals"
+        value: "FAIL"
+      - path: "stage1_spec_compliance.uncovered"
+        type: "array_length_gte"
+        value: 1
+      - path: "verdict"
+        type: "equals"
+        value: "REQUEST_CHANGES"
+
+  - test_id: "rcq-tc-003"
+    checks:
+      - path: "stage2_code_quality.metrics.quality_issues"
+        type: "array_length"
+        value: 0
+      - path: "stage2_code_quality.verdict"
+        type: "equals"
+        value: "APPROVE"
+
+  - test_id: "rcq-tc-004"
+    checks:
+      - path: "stage2_code_quality.metrics.quality_issues"
+        type: "array_length_gte"
+        value: 1
+      - path: "stage2_code_quality.verdict"
+        type: "equals"
+        value: "REQUEST_CHANGES"

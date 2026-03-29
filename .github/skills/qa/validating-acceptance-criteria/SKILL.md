@@ -1,39 +1,29 @@
 ---
 name: validating-acceptance-criteria
-version: "1.0.0"
-description: "Map AC to test evidence, score SATISFIED/PARTIAL/UNMET per criterion"
-category: evaluation
-phase: post-coding
-platforms: ["all"]
-dependencies: ["parsing-requirements"]
-soft_dependencies: ["analyzing-coverage"]
-input_schema:
-  - name: "acceptance_criteria"
-    type: "array"
-    required: true
-  - name: "test_results"
-    type: "object"
-    required: true
-  - name: "git_diff"
-    type: "string"
-    required: true
-output_schema:
-  - name: "criteria"
-    type: "array"
-    description: "Per-AC status + evidence"
-  - name: "satisfied"
-    type: "number"
-  - name: "partial"
-    type: "number"
-  - name: "unmet"
-    type: "number"
-  - name: "verdict"
-    type: "string"
+description: "Maps each acceptance criterion to concrete test evidence and scores it SATISFIED, PARTIAL, or UNMET. Use when tests have run and AC are available from parsing-requirements, or when a traceability matrix and Acceptance dimension verdict are needed."
 ---
 
 # validating-acceptance-criteria
 
 Map each acceptance criterion to concrete test evidence. Score every AC as SATISFIED, PARTIAL, or UNMET. Any non-SATISFIED AC fails the Acceptance dimension.
+
+## Quick Reference
+
+**Phase:** post-coding  
+**Inputs:**
+- `acceptance_criteria` (array, required) — from parsing-requirements
+- `test_results` (object, required) — test runner output
+- `git_diff` (string, required) — diff for implementation evidence
+
+**Outputs:**
+- `criteria` — per-AC status and evidence map
+- `satisfied` / `partial` / `unmet` — counts per status
+- `verdict` — PASS | FAIL
+
+**Depends on:** parsing-requirements  
+**Works better with:** analyzing-coverage (enriches coverage evidence per AC)
+
+**Load before starting:** `rules/qa-standards.md` — AC traceability requirements and test independence rules
 
 ## When to Use
 
@@ -47,6 +37,7 @@ Post-coding, after tests have run. Requires AC list from `parsing-requirements` 
    - **Coverage data** (if available from `analyzing-coverage`): Whether relevant code paths are covered
 
 2. Run `scripts/ac-evidence-mapper.py` for keyword-based matching as a baseline.
+   **Script unavailable:** manually read each AC and search the test files for test names or assertions that correspond to each criterion. Assign SATISFIED/PARTIAL/UNMET by inspection.
 
 3. Score each AC:
    - **SATISFIED:** Test exists AND passes that directly validates this criterion
@@ -85,3 +76,17 @@ Post-coding, after tests have run. Requires AC list from `parsing-requirements` 
 - **PARTIAL is not a soft pass.** It counts as a gap in the Acceptance dimension.
 - **Never SATISFIED on code-only evidence.** Implementation without a passing test is PARTIAL at best.
 - **Preserve AC text exactly.** Don't rephrase criteria in the output.
+
+## Output
+
+Write AC validation results to the `## Copilot Workpad` issue comment:
+```markdown
+### QA: acceptance-criteria
+verdict: PASS | FAIL
+satisfied: N | partial: N | unmet: N
+[per-AC breakdown with evidence test names]
+```
+
+## Consumers
+
+- `generating-qa-report` — receives Acceptance dimension verdict and per-AC evidence map

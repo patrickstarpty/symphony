@@ -1,49 +1,35 @@
 ---
 name: classifying-test-failures
-version: "1.0.0"
-description: "Classify failures as real-bug, flaky, or environment-issue via retry and pattern analysis"
-category: evaluation
-phase: post-coding
-platforms: ["all"]
-dependencies: []
-input_schema:
-  - name: "failed_tests"
-    type: "array"
-    required: true
-  - name: "test_command"
-    type: "string"
-    required: true
-  - name: "retry_count"
-    type: "number"
-    required: false
-    description: "Default: 2"
-output_schema:
-  - name: "classifications"
-    type: "array"
-  - name: "real_bugs"
-    type: "number"
-  - name: "flaky"
-    type: "number"
-  - name: "env_issues"
-    type: "number"
-  - name: "verdict"
-    type: "string"
-    description: "PASS if zero real-bugs"
+description: "Classifies test failures as real bugs, flaky tests, or environment issues via retry analysis and error pattern matching. Use when test execution has failures and a Pass Rate verdict is needed, or before healing broken tests to determine which failures require fixing."
 ---
 
 # classifying-test-failures
 
 Classify test failures into actionable categories: real bugs that need fixing, flaky tests that need stabilization, and environment issues that need infrastructure attention.
 
-## When to Use
+## Quick Reference
 
-Post-coding, when test execution has failures. Feeds the Pass Rate dimension into `generating-qa-report`. Also consumed by `healing-broken-tests` (P3).
+**Phase:** post-coding  
+**Inputs:**
+- `failed_tests` (array, required) — list of failing test names/paths
+- `test_command` (string, required) — command to re-run individual tests
+- `retry_count` (number, optional) — default 2
+
+**Outputs:**
+- `classifications` — per-test category (real-bug | flaky | env-issue) with retry data
+- `real_bugs` / `flaky` / `env_issues` — counts per category
+- `verdict` — PASS (zero real-bugs) | FAIL
+
+**Load before starting:** `rules/qa-standards.md` — AC traceability requirements and test independence rules
+
+## When to Use Feeds the Pass Rate dimension into `generating-qa-report`. Also consumed by `healing-broken-tests`.
 
 ## Instructions
 
 1. Run `scripts/retry-failures.sh` for each failed test (up to retry_count, default 2):
    - Re-runs each failed test in isolation
    - Captures exit code and stderr for each attempt
+   **Script unavailable:** re-run the failed test 2× manually. If it passes on retry → flaky. If it always fails → real-bug or env-issue.
 
 2. Classify based on retry results and error patterns:
    - **real-bug:** Consistent assertion error with identical stack trace across all retries
@@ -51,6 +37,7 @@ Post-coding, when test execution has failures. Feeds the Pass Rate dimension int
    - **env-issue:** Error matches environment patterns (connection refused, timeout, OOM, port conflict)
 
 3. Run `scripts/classify-failure.py` for pattern-based error matching as a secondary signal.
+   **Script unavailable:** inspect the failure message — 'element not found' or selector changes → env-issue; assertion mismatch on business logic → real-bug; inconsistent across runs → flaky.
 
 4. Determine verdict:
    - **PASS:** Zero real-bugs (flaky and env-issues reported but don't block)
@@ -84,7 +71,20 @@ Post-coding, when test execution has failures. Feeds the Pass Rate dimension int
 
 ## Guardrails
 
-- **Max 2 retries in P1.** Don't burn CI time with excessive retries.
+- **Max 2 retries.** Don't burn CI time with excessive retries.
 - **Passing on retry = flaky, not fixed.** Don't silently promote to passing.
 - **Identical assertion across all retries = real bug.** Don't classify as flaky just because it's intermittent.
-- **P3 enhancement:** Historical pass rate analysis via Knowledge Base replaces simple retry heuristics.
+- **Future enhancement (not yet available):** Historical pass rate analysis via Knowledge Base replaces simple retry heuristics.
+
+## Output
+
+Write failure classification to the `## Copilot Workpad` issue comment:
+```markdown
+### QA: failures
+verdict: PASS | FAIL
+real_bugs: N | flaky: N | env_issues: N
+[per-failure: test_id | classification | reason]
+```
+
+## Consumers
+- `healing-broken-tests` — receives flaky and env-issue failures for repair

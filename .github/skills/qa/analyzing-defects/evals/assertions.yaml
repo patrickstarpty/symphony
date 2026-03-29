@@ -1,0 +1,33 @@
+assertions:
+  - test_id: "ad-tc-001"
+    checks:
+      - path: "patterns"
+        type: "array_length_gte"
+        value: 1
+      - path: "patterns[0].component"
+        type: "equals"
+        value: "payment"
+      - path: "patterns[0].root_cause"
+        type: "equals"
+        value: "data"
+      - path: "patterns[0].frequency"
+        type: "number_gte"
+        value: 5
+
+  - test_id: "ad-tc-002"
+    checks:
+      - path: "hotspots"
+        type: "array_length_gte"
+        value: 1
+      - path: "hotspots[0].component"
+        type: "equals"
+        value: "legacy-api"
+      - path: "hotspots[0].defect_count"
+        type: "number_gte"
+        value: 5
+
+  - test_id: "ad-tc-003"
+    checks:
+      - path: "patterns"
+        type: "array_length"
+        value: 0

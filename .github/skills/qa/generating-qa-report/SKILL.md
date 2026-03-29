@@ -1,44 +1,32 @@
 ---
 name: generating-qa-report
-version: "1.0.0"
-description: "Aggregate evaluation dimensions into structured QA Report for issue workpad"
-category: evaluation
-phase: post-coding
-platforms: ["all"]
-dependencies: ["analyzing-coverage", "validating-acceptance-criteria", "classifying-test-failures"]
-input_schema:
-  - name: "coverage_result"
-    type: "object"
-    required: true
-  - name: "acceptance_result"
-    type: "object"
-    required: true
-  - name: "failure_result"
-    type: "object"
-    required: true
-  - name: "issue_id"
-    type: "string"
-    required: true
-  - name: "gate_policy"
-    type: "string"
-    required: false
-    description: "strict | advisory (default: advisory)"
-output_schema:
-  - name: "report_markdown"
-    type: "string"
-  - name: "verdict"
-    type: "string"
-  - name: "dimensions"
-    type: "array"
+description: "Aggregates Pass Rate, Coverage, and Acceptance dimensions into a structured QA Report with overall PASS/FAIL verdict. Use when all three evaluation skills (analyzing-coverage, validating-acceptance-criteria, classifying-test-failures) have produced outputs and a quality gate decision needs to be written to the issue workpad."
 ---
 
 # generating-qa-report
 
 Aggregate the three evaluation dimensions (Pass Rate, Coverage, Acceptance) into a single QA Report. This is the quality gate decision point.
 
+## Quick Reference
+
+**Phase:** post-coding  
+**Inputs:**
+- `coverage_result` (object, required) — from analyzing-coverage
+- `acceptance_result` (object, required) — from validating-acceptance-criteria
+- `failure_result` (object, required) — from classifying-test-failures
+- `issue_id` (string, required)
+- `gate_policy` (string, optional) — strict | advisory (default: advisory)
+
+**Outputs:**
+- `report_markdown` — formatted QA Report for issue workpad
+- `verdict` — PASS | FAIL
+- `dimensions` — per-dimension scores and statuses
+
+**Depends on:** analyzing-coverage, validating-acceptance-criteria, classifying-test-failures
+
 ## When to Use
 
-After all three P1 evaluation skills have produced their outputs. This is the final aggregation step before the verdict is written to the issue workpad.
+After all three evaluation skills have produced their outputs. This is the final aggregation step before the verdict is written to the issue workpad.
 
 ## Instructions
 
@@ -73,9 +61,22 @@ After all three P1 evaluation skills have produced their outputs. This is the fi
 - **Advisory mode still states what would fail under strict.** Visibility is non-negotiable.
 - **Don't editorialize.** Report facts, don't add subjective commentary.
 
+## Output
+
+Write the QA report to the `## Copilot Workpad` issue comment under:
+```markdown
+### QA: report
+OVERALL: PASS ✅  (or FAIL ❌)
+Pass Rate: PASS/FAIL (X% passing, threshold Y%)
+Coverage: PASS/FAIL (X%, threshold Y%)
+Acceptance: PASS/FAIL (N satisfied, N partial, N unmet)
+Gate mode: strict | advisory
+```
+On FAIL: list which dimension(s) failed and what action is required before moving to Human Review.
+
 ## Consumers
 
 - Issue workpad (written as markdown comment)
-- `reviewing-code-quality` (P3) — QA gates must pass before code review
-- `healing-broken-tests` (P3) — prioritizes which failures to address
-- `analyzing-defects` (P3) — aggregate quality trends
+- `reviewing-code-quality` — QA gates must pass before code review
+- `healing-broken-tests` — prioritizes which failures to address
+- `analyzing-defects` — aggregate quality trends

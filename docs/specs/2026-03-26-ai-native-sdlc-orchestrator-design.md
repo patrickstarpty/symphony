@@ -829,56 +829,48 @@ subagent:
 
 ## 11. Skill Hub
 
-Shared across all agent roles. Organized by domain, consumed by roles via `available_skills` in agent.md.
+Shared across all agent roles. Consumed by roles via `available_skills` in agent.md. All QA skills live under `.github/skills/qa/`; development and DevOps skills live under `.github/skills/` (shared with non-orchestrated Copilot usage). Full skill specifications defined in [QA Verification Skills Design](2026-03-28-qa-skills-quick-win-design.md).
 
 ```
-skill-hub/
-├─ analysis/
-│   ├─ requirement-parser/
-│   ├─ change-impact/
-│   └─ risk-scorer/
+.github/skills/
 │
-├─ generation/
-│   ├─ playwright-gen/
-│   ├─ appium-gen/
-│   ├─ api-test-gen/
-│   ├─ k6-gen/
-│   ├─ test-case-matrix/
-│   ├─ test-data-gen/
-│   └─ cobol-boundary-test/
+├─ qa/                              ← QA CoE-owned skills
+│   │
+│   ├─ [P1] parsing-requirements/         — Extract structured AC, detect ambiguities
+│   ├─ [P1] test-driven-development/      — QA extension: TDD rhythm + test-case gen from AC
+│   ├─ [P1] analyzing-coverage/           — Interpret coverage gaps, risk-assess per gap
+│   ├─ [P1] validating-acceptance-criteria/ — Map AC to test evidence, score SATISFIED/PARTIAL/UNMET
+│   ├─ [P1] classifying-test-failures/    — Classify failures: real-bug | flaky | env-issue
+│   ├─ [P1] generating-qa-report/         — Aggregate 3-dimension verdict into QA Report
+│   │
+│   ├─ [P2] generating-test-data/         — Synthetic domain-realistic fixtures (PII-safe)
+│   ├─ [P2] generating-playwright-tests/  — Web E2E test generation (Page Object pattern)
+│   ├─ [P2] generating-api-tests/         — REST/GraphQL test generation
+│   ├─ [P2] generating-mobile-tests/      — iOS/Android test generation (Appium/XCTest)
+│   ├─ [P2] generating-perf-tests/        — Load/performance test generation (k6/Locust)
+│   │
+│   ├─ [P3] scoring-risk/                 — Risk scoring for dynamic coverage thresholds
+│   ├─ [P3] reviewing-code-quality/       — Code quality review for Code Reviewer agent
+│   ├─ [P3] selecting-regressions/        — Smart regression selection by change impact
+│   ├─ [P3] healing-broken-tests/         — Auto-repair tests broken by intentional changes
+│   ├─ [P3] analyzing-defects/            — Root cause analysis, writes to Knowledge Base
+│   │
+│   └─ rules/
+│       ├─ [P1] qa-standards.md           — CoE quality standards injected into every QA session
+│       ├─ [P1] tdd-rules.md              — TDD rules (what to test, what not to test)
+│       ├─ [P2] security-standards.md
+│       ├─ [P2] platform/{typescript,python,java,go}.md
+│       └─ [P3] review-guidelines.md
 │
-├─ execution/
-│   ├─ test-runner/
-│   ├─ regression-selector/
-│   └─ self-healer/
-│
-├─ evaluation/
-│   ├─ coverage-analyzer/
-│   ├─ acceptance-validator/
-│   ├─ qa-reporter/
-│   ├─ failure-classifier/
-│   └─ defect-analyzer/
-│
-├─ development/
-│   ├─ commit/
-│   ├─ push/
-│   ├─ pull/
-│   ├─ test-driven-development/
-│   ├─ systematic-debugging/
-│   └─ finishing-a-development-branch/
-│
-├─ review/
-│   ├─ code-quality-review/
-│   ├─ security-scan/
-│   └─ architecture-compliance/
-│
-└─ devops/
-    ├─ ci-pipeline/
-    ├─ deployment/
-    └─ environment-health-check/
+├─ commit/                          ← Development skills (existing, shared)
+├─ push/
+├─ pull/
+├─ test-driven-development/         ← Superpowers TDD (QA extension coexists at qa/test-driven-development/)
+├─ systematic-debugging/
+└─ finishing-a-development-branch/
 ```
 
-Skill standard structure as defined in QA Agent sub-spec (skill.yaml + prompt.md + knowledge/ + templates/ + tests/).
+Skill standard structure (from QA skills spec §3): `SKILL.md` + `scripts/` + `references/` + `templates/` + `evals/`. The `test-driven-development` QA extension at `qa/test-driven-development/` coexists with the Superpowers TDD skill — it adds QA-specific content (test-case gen, domain patterns, multi-framework templates) without replacing core TDD principles.
 
 ## 12. Knowledge Base
 
@@ -1028,7 +1020,14 @@ Subagent cleanup protocol:
 - WORKFLOW.md parser + Liquid template rendering
 - Developer role (agent.md) — Copilot CLI writes code
 - QA Evaluator role (agent.md) — same-session prompt injection, not separate agent dispatch (from QA sub-spec P1; upgrades to independent session in P3)
-- 5 QA evaluation skills (test-runner, coverage-analyzer, acceptance-validator, qa-reporter, failure-classifier)
+- 6 QA skills in `.github/skills/qa/` (see Section 11):
+  - `parsing-requirements` — extract structured AC, detect ambiguities
+  - `test-driven-development` — QA extension: TDD rhythm enforcement + test-case generation from AC
+  - `analyzing-coverage` — interpret coverage reports, risk-assess gaps
+  - `validating-acceptance-criteria` — map AC to test evidence, SATISFIED/PARTIAL/UNMET
+  - `classifying-test-failures` — real-bug vs flaky vs env-issue (retry up to 2x)
+  - `generating-qa-report` — aggregate 3-dimension verdict into workpad report
+- 2 QA rules files: `qa-standards.md`, `tdd-rules.md`
 - QA quality gate (pass rate + coverage + acceptance)
 - Sprint Contract Protocol between Developer and QA Evaluator (see Section 22)
 - Phase Initialization Protocol + `.symphony/progress.json` + `.symphony/notes.md`
@@ -1041,12 +1040,12 @@ Subagent cleanup protocol:
 **Goal:** Full role catalog, multi-phase orchestration, test generation skills.
 
 **Deliverables:**
-- Requirements Analyst role + requirement-parser skill
+- Requirements Analyst role + `parsing-requirements` skill promoted to P1 (see Phase 1)
 - Code Reviewer role
 - Multi-phase pipeline execution (developer → qa → review)
 - Internal phase state management (.symphony/phase.json)
 - JIRA adapter (basic: fetch issues, update state, add comments)
-- Per-platform test generation skills (playwright-gen, appium-gen, api-test-gen, k6-gen)
+- Per-platform test generation skills (`generating-playwright-tests`, `generating-api-tests`, `generating-mobile-tests`, `generating-perf-tests`) + `generating-test-data`
 - Knowledge Base (RAG) with CoE standards + insurance domain
 - QA Service independent deployment (FastAPI)
 - Event bus (in-process)
@@ -1078,14 +1077,14 @@ Subagent cleanup protocol:
 
 | Measure | Phase | Owner |
 |---------|-------|-------|
-| M1 TDD-driven SDLC | P1 | Developer role (TDD skill) + QA gate (both delivered P1; full multi-phase measurement requires P2 pipeline) |
-| M2 Requirement → test case | P2 | Requirements Analyst role |
-| M3 Code gen with skills | P2 | QA Evaluator role (test gen skills) |
-| M4 Risk-based prioritization | P3 | Quality Gate Engine |
-| M5 Self-healing automation | P3 | QA Evaluator role (self-healer skill) |
-| M6 Regression intelligence | P3 | QA Evaluator role (regression-selector skill) |
-| M7 Simulation test data | P2 | QA Evaluator role (test-data-gen skill) |
-| M8 Defect root cause | P3 | QA Evaluator role (defect-analyzer skill) |
+| M1 TDD-driven SDLC | P1 | Developer role (`test-driven-development` QA extension) + QA gate |
+| M2 Requirement → test case | P1 | `parsing-requirements` skill (promoted from P2) |
+| M3 Code gen with skills | P2 | QA Evaluator role (`generating-playwright-tests`, `generating-api-tests`, `generating-mobile-tests`, `generating-perf-tests`) |
+| M4 Risk-based prioritization | P3 | `scoring-risk` skill + Quality Gate Engine dynamic thresholds |
+| M5 Self-healing automation | P3 | `healing-broken-tests` skill |
+| M6 Regression intelligence | P3 | `selecting-regressions` skill |
+| M7 Simulation test data | P2 | `generating-test-data` skill |
+| M8 Defect root cause | P3 | `analyzing-defects` skill |
 
 ## 19. Organizational Model
 

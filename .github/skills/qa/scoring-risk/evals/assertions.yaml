@@ -1,0 +1,36 @@
+assertions:
+  - test_id: "sr-tc-001"
+    checks:
+      - path: "risk_score"
+        type: "number_range"
+        min: 60
+        max: 100
+      - path: "risk_level"
+        type: "equals"
+        value: "high"
+      - path: "factors[0].score"
+        type: "number_range"
+        min: 0
+        max: 25
+      - path: "recommended_thresholds.coverage"
+        type: "number_gte"
+        value: 85
+
+  - test_id: "sr-tc-002"
+    checks:
+      - path: "risk_score"
+        type: "number_lte"
+        value: 30
+      - path: "risk_level"
+        type: "equals"
+        value: "low"
+
+  - test_id: "sr-tc-003"
+    checks:
+      - path: "risk_score"
+        type: "number_gte"
+        value: 50
+      - path: "factors"
+        type: "array_has_where"
+        field: "name"
+        value: "defect_density"

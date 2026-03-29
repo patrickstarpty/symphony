@@ -1,0 +1,54 @@
+test_cases:
+  - id: "hbt-tc-001"
+    description: "Locator breakage: high confidence auto-heal"
+    input:
+      broken_tests:
+        - test_id: "login-submit"
+          error: "element not found: .submit-btn"
+      git_diff: |
+        diff --git a/src/LoginForm.tsx
+        - <button className="submit-btn">
+        + <button data-testid="submit-btn">
+      intent: "Refactor button selector to data-testid"
+    expected:
+      healed_count: 1
+      unhealed_count: 0
+      confidence: "high"
+      patches:
+        - test: "login-submit"
+          old: ".submit-btn"
+          new: "submit-btn"
+
+  - id: "hbt-tc-002"
+    description: "Expected value breakage: medium confidence"
+    input:
+      broken_tests:
+        - test_id: "price-calc"
+          error: "expected 110, got 120"
+      git_diff: |
+        diff --git a/src/pricing.ts
+        - return amount * 1.1;
+        + return amount * 1.2;
+      intent: "Update markup policy from 10% to 20%"
+    expected:
+      healed_count: 0
+      unhealed_count: 1
+      confidence: "medium"
+      requires_review: true
+
+  - id: "hbt-tc-003"
+    description: "Logic breakage: low confidence, human review only"
+    input:
+      broken_tests:
+        - test_id: "order-filter"
+          error: "TypeError: Cannot read property 'map' of undefined"
+      git_diff: |
+        diff --git a/src/OrderService.ts
+        - getOrders() { return this.orders.map(...); }
+        + async getOrders() { return this.fetchRemote(); }
+      intent: "Refactor to async remote fetch"
+    expected:
+      healed_count: 0
+      unhealed_count: 1
+      confidence: "low"
+      requires_review: true
