@@ -1,0 +1,24 @@
+assertions:
+  - test_case: "pr-tc-001"
+    checks:
+      - { field: "acceptance_criteria", operator: "length_equals", value: 4 }
+      - { field: "acceptance_criteria[2].testable", operator: "equals", value: false }
+      - { field: "ambiguities", operator: "length_gte", value: 1 }
+      - { field: "ambiguities[0]", operator: "contains", value: "appropriate" }
+
+  - test_case: "pr-tc-002"
+    checks:
+      - { field: "acceptance_criteria", operator: "length_equals", value: 3 }
+      - { field: "ambiguities", operator: "length_equals", value: 0 }
+      - { field: "acceptance_criteria[0].text", operator: "contains", value: "Given" }
+
+  - test_case: "pr-tc-003"
+    checks:
+      - { field: "acceptance_criteria", operator: "length_gte", value: 1 }
+      - { field: "ambiguities", operator: "length_gte", value: 1 }
+      - { field: "missing", operator: "length_gte", value: 1 }
+
+  - test_case: "pr-tc-004"
+    checks:
+      - { field: "acceptance_criteria", operator: "length_equals", value: 0 }
+      - { field: "missing", operator: "length_gte", value: 1 }

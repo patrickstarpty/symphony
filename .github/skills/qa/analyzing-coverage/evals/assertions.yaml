@@ -1,0 +1,16 @@
+assertions:
+  - test_case: "cov-tc-001"
+    checks:
+      - { field: "verdict", operator: "equals", value: "PASS" }
+      - { field: "summary.lines", operator: "gte", value: 80 }
+
+  - test_case: "cov-tc-002"
+    checks:
+      - { field: "verdict", operator: "equals", value: "FAIL" }
+      - { field: "gaps", operator: "length_gte", value: 2 }
+      - { field: "gaps[0].risk", operator: "in", value: ["critical", "high"] }
+
+  - test_case: "cov-tc-003"
+    checks:
+      - { field: "verdict", operator: "equals", value: "FAIL" }
+      - { field: "gaps", operator: "length_gte", value: 1 }

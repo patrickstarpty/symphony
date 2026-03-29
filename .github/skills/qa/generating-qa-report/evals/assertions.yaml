@@ -1,0 +1,17 @@
+assertions:
+  - test_case: "qr-tc-001"
+    checks:
+      - { field: "verdict", operator: "equals", value: "PASS" }
+      - { field: "dimensions", operator: "length_equals", value: 3 }
+      - { field: "report_markdown", operator: "contains", value: "PAY-123" }
+
+  - test_case: "qr-tc-002"
+    checks:
+      - { field: "verdict", operator: "equals", value: "FAIL" }
+      - { field: "report_markdown", operator: "contains", value: "AUTH-456" }
+      - { field: "report_markdown", operator: "contains", value: "critical" }
+
+  - test_case: "qr-tc-003"
+    checks:
+      - { field: "report_markdown", operator: "contains", value: "Advisory" }
+      - { field: "report_markdown", operator: "contains", value: "strict" }

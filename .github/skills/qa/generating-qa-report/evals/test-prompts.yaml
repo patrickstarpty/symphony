@@ -1,0 +1,78 @@
+test_cases:
+  - id: "qr-tc-001"
+    description: "All dimensions pass — clean report"
+    input:
+      coverage_result:
+        verdict: "PASS"
+        summary: { lines: 92.0, branches: 85.0, functions: 95.0 }
+        gaps: []
+      acceptance_result:
+        verdict: "PASS"
+        satisfied: 4
+        partial: 0
+        unmet: 0
+        criteria:
+          - { id: "AC-1", status: "SATISFIED" }
+          - { id: "AC-2", status: "SATISFIED" }
+          - { id: "AC-3", status: "SATISFIED" }
+          - { id: "AC-4", status: "SATISFIED" }
+      failure_result:
+        verdict: "PASS"
+        real_bugs: 0
+        flaky: 1
+        env_issues: 0
+        classifications:
+          - { test: "test_ws", category: "flaky" }
+      issue_id: "PAY-123"
+      gate_policy: "strict"
+    expected:
+      verdict: "PASS"
+      dimensions_count: 3
+      report_contains: ["PAY-123", "PASS"]
+
+  - id: "qr-tc-002"
+    description: "Mixed failures — coverage and acceptance fail"
+    input:
+      coverage_result:
+        verdict: "FAIL"
+        summary: { lines: 62.0, branches: 45.0, functions: 70.0 }
+        gaps:
+          - { file: "src/auth/login.ts", coverage: 40.0, risk: "critical" }
+      acceptance_result:
+        verdict: "FAIL"
+        satisfied: 2
+        partial: 1
+        unmet: 1
+      failure_result:
+        verdict: "PASS"
+        real_bugs: 0
+        flaky: 0
+        env_issues: 0
+      issue_id: "AUTH-456"
+      gate_policy: "strict"
+    expected:
+      verdict: "FAIL"
+      failing_dimensions: ["Coverage", "Acceptance"]
+
+  - id: "qr-tc-003"
+    description: "Advisory mode — would fail strict but reports as advisory"
+    input:
+      coverage_result:
+        verdict: "FAIL"
+        summary: { lines: 72.0, branches: 60.0, functions: 80.0 }
+        gaps: []
+      acceptance_result:
+        verdict: "PASS"
+        satisfied: 3
+        partial: 0
+        unmet: 0
+      failure_result:
+        verdict: "PASS"
+        real_bugs: 0
+        flaky: 0
+        env_issues: 0
+      issue_id: "FEAT-789"
+      gate_policy: "advisory"
+    expected:
+      verdict: "ADVISORY"
+      report_contains: ["Under strict policy"]

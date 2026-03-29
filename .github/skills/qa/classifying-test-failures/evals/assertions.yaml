@@ -1,0 +1,19 @@
+assertions:
+  - test_case: "cf-tc-001"
+    checks:
+      - { field: "verdict", operator: "equals", value: "FAIL" }
+      - { field: "real_bugs", operator: "equals", value: 1 }
+      - { field: "flaky", operator: "gte", value: 1 }
+      - { field: "env_issues", operator: "gte", value: 1 }
+
+  - test_case: "cf-tc-002"
+    checks:
+      - { field: "verdict", operator: "equals", value: "PASS" }
+      - { field: "real_bugs", operator: "equals", value: 0 }
+      - { field: "env_issues", operator: "equals", value: 2 }
+
+  - test_case: "cf-tc-003"
+    checks:
+      - { field: "verdict", operator: "equals", value: "PASS" }
+      - { field: "flaky", operator: "gte", value: 1 }
+      - { field: "real_bugs", operator: "equals", value: 0 }

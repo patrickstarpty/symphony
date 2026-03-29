@@ -1,0 +1,18 @@
+assertions:
+  - test_case: "tdd-tc-001"
+    checks:
+      - { field: "test_cases", operator: "length_gte", value: 4 }
+      - { field: "test_cases[*].technique", operator: "contains_any", value: "boundary_value_analysis" }
+      - { field: "tdd_log", operator: "length_gte", value: 1 }
+      - { field: "tdd_log[0].phase", operator: "equals", value: "red" }
+
+  - test_case: "tdd-tc-002"
+    checks:
+      - { field: "test_cases", operator: "length_gte", value: 3 }
+      - { field: "test_files", operator: "length_gte", value: 1 }
+      - { field: "test_files[0]", operator: "contains", value: ".spec.ts" }
+
+  - test_case: "tdd-tc-003"
+    checks:
+      - { field: "test_cases", operator: "length_gte", value: 8 }
+      - { field: "test_cases[*].technique", operator: "contains_any", value: ["equivalence_partitioning", "boundary_value_analysis"] }
