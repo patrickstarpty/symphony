@@ -1,41 +1,26 @@
 ---
 name: scoring-risk
-version: "1.0.0"
-description: "Score issue risk from change scope, component criticality, defect history — feed dynamic thresholds"
-category: analysis
-phase: pre-coding
-platforms: ["all"]
-dependencies: []
-input_schema:
-  - name: "git_diff"
-    type: "string"
-    required: true
-  - name: "issue_metadata"
-    type: "object"
-    required: false
-  - name: "component_registry"
-    type: "object"
-    required: false
-  - name: "defect_history"
-    type: "object"
-    required: false
-    description: "From Knowledge Base MCP"
-output_schema:
-  - name: "risk_score"
-    type: "number"
-    description: "0-100"
-  - name: "risk_level"
-    type: "string"
-    description: "critical | high | medium | low"
-  - name: "factors"
-    type: "array"
-  - name: "recommended_thresholds"
-    type: "object"
+description: "Scores change risk (0–100) from scope, component criticality, defect history, and complexity to produce dynamic coverage thresholds. Use when beginning an issue before coding starts, or when analyzing-coverage thresholds need calibration based on payment, auth, or business logic changes."
 ---
 
 # scoring-risk
 
 Score the risk of a change based on scope, component criticality, historical defect density, and complexity delta. Output risk level and dynamic coverage thresholds.
+
+## Quick Reference
+
+**Phase:** pre-coding  
+**Inputs:**
+- `git_diff` (string, required)
+- `issue_metadata` (object, optional)
+- `component_registry` (object, optional)
+- `defect_history` (object, optional) — from Knowledge Base MCP
+
+**Outputs:**
+- `risk_score` — 0–100 numeric score
+- `risk_level` — critical | high | medium | low
+- `factors` — contributing factor breakdown
+- `recommended_thresholds` — dynamic coverage thresholds per component
 
 ## When to Use
 

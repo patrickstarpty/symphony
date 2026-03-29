@@ -1,40 +1,28 @@
 ---
 name: generating-qa-report
-version: "1.0.0"
-description: "Aggregate evaluation dimensions into structured QA Report for issue workpad"
-category: evaluation
-phase: post-coding
-platforms: ["all"]
-dependencies: ["analyzing-coverage", "validating-acceptance-criteria", "classifying-test-failures"]
-input_schema:
-  - name: "coverage_result"
-    type: "object"
-    required: true
-  - name: "acceptance_result"
-    type: "object"
-    required: true
-  - name: "failure_result"
-    type: "object"
-    required: true
-  - name: "issue_id"
-    type: "string"
-    required: true
-  - name: "gate_policy"
-    type: "string"
-    required: false
-    description: "strict | advisory (default: advisory)"
-output_schema:
-  - name: "report_markdown"
-    type: "string"
-  - name: "verdict"
-    type: "string"
-  - name: "dimensions"
-    type: "array"
+description: "Aggregates Pass Rate, Coverage, and Acceptance dimensions into a structured QA Report with overall PASS/FAIL verdict. Use when all three P1 evaluation skills (analyzing-coverage, validating-acceptance-criteria, classifying-test-failures) have produced outputs and a quality gate decision needs to be written to the issue workpad."
 ---
 
 # generating-qa-report
 
 Aggregate the three evaluation dimensions (Pass Rate, Coverage, Acceptance) into a single QA Report. This is the quality gate decision point.
+
+## Quick Reference
+
+**Phase:** post-coding  
+**Inputs:**
+- `coverage_result` (object, required) — from analyzing-coverage
+- `acceptance_result` (object, required) — from validating-acceptance-criteria
+- `failure_result` (object, required) — from classifying-test-failures
+- `issue_id` (string, required)
+- `gate_policy` (string, optional) — strict | advisory (default: advisory)
+
+**Outputs:**
+- `report_markdown` — formatted QA Report for issue workpad
+- `verdict` — PASS | FAIL
+- `dimensions` — per-dimension scores and statuses
+
+**Depends on:** analyzing-coverage, validating-acceptance-criteria, classifying-test-failures
 
 ## When to Use
 

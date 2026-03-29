@@ -1,32 +1,26 @@
 ---
 name: test-driven-development
-version: "1.0.0-qa"
-description: "Enforce TDD Red-Green-Refactor: generate test cases from AC, write failing tests, implement, verify"
-category: enforcement
-phase: during-coding
-platforms: ["all"]
-dependencies: ["parsing-requirements"]
-extends: "../test-driven-development/SKILL.md"
-input_schema:
-  - name: "acceptance_criteria"
-    type: "array"
-    required: true
-  - name: "framework"
-    type: "string"
-    required: false
-    description: "jest | pytest | playwright | junit. Auto-detected if omitted."
-output_schema:
-  - name: "test_cases"
-    type: "array"
-  - name: "test_files"
-    type: "array"
-  - name: "tdd_log"
-    type: "array"
+description: "Extends the base TDD skill with QA-specific test case matrix generation using equivalence partitioning, boundary analysis, and decision tables. Use when acceptance criteria are available from parsing-requirements and need translation into framework-specific scaffolding (Jest, pytest, Playwright, JUnit)."
 ---
 
 # test-driven-development (QA Extension)
 
 > **Loading:** This extension loads *in addition to* the Superpowers TDD skill at `.github/skills/test-driven-development/`. On conflict, Superpowers wins. This skill adds net-new QA content only.
+
+## Quick Reference
+
+**Phase:** during-coding  
+**Inputs:**
+- `acceptance_criteria` (array, required) — from parsing-requirements
+- `framework` (string, optional) — jest | pytest | playwright | junit (auto-detected if omitted)
+
+**Outputs:**
+- `test_cases` — generated test case matrix
+- `test_files` — written test files
+- `tdd_log` — Red/Green/Refactor cycle audit trail
+
+**Depends on:** parsing-requirements  
+**Extends:** `../test-driven-development/SKILL.md` (QA extension — adds net-new content only)
 
 ## When to Use
 

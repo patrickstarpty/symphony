@@ -1,39 +1,24 @@
 ---
 name: classifying-test-failures
-version: "1.0.0"
-description: "Classify failures as real-bug, flaky, or environment-issue via retry and pattern analysis"
-category: evaluation
-phase: post-coding
-platforms: ["all"]
-dependencies: []
-input_schema:
-  - name: "failed_tests"
-    type: "array"
-    required: true
-  - name: "test_command"
-    type: "string"
-    required: true
-  - name: "retry_count"
-    type: "number"
-    required: false
-    description: "Default: 2"
-output_schema:
-  - name: "classifications"
-    type: "array"
-  - name: "real_bugs"
-    type: "number"
-  - name: "flaky"
-    type: "number"
-  - name: "env_issues"
-    type: "number"
-  - name: "verdict"
-    type: "string"
-    description: "PASS if zero real-bugs"
+description: "Classifies test failures as real bugs, flaky tests, or environment issues via retry analysis and error pattern matching. Use when test execution has failures and a Pass Rate verdict is needed, or before healing broken tests to determine which failures require fixing."
 ---
 
 # classifying-test-failures
 
 Classify test failures into actionable categories: real bugs that need fixing, flaky tests that need stabilization, and environment issues that need infrastructure attention.
+
+## Quick Reference
+
+**Phase:** post-coding  
+**Inputs:**
+- `failed_tests` (array, required) — list of failing test names/paths
+- `test_command` (string, required) — command to re-run individual tests
+- `retry_count` (number, optional) — default 2
+
+**Outputs:**
+- `classifications` — per-test category (real-bug | flaky | env-issue) with retry data
+- `real_bugs` / `flaky` / `env_issues` — counts per category
+- `verdict` — PASS (zero real-bugs) | FAIL
 
 ## When to Use
 

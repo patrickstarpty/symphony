@@ -1,41 +1,27 @@
 ---
 name: generating-api-tests
-version: "1.0.0"
-description: "Generate API test suites from OpenAPI 3.x and GraphQL schemas with happy path and edge cases"
-category: generation
-phase: post-coding
-platforms: ["api"]
-dependencies: ["test-driven-development"]
-soft_dependencies: []
-input_schema:
-  - name: "schema"
-    type: "object|string"
-    required: true
-    description: "OpenAPI 3.x spec, Swagger 2.0, or GraphQL SDL file path"
-  - name: "test_style"
-    type: "string"
-    required: false
-    default: "jest"
-    description: "jest | pytest | ts-rest"
-  - name: "base_url"
-    type: "string"
-    required: false
-    description: "API base URL for tests (non-production)"
-output_schema:
-  - name: "test_suites"
-    type: "array"
-    description: "Generated test files by endpoint"
-  - name: "schema_coverage_report"
-    type: "object"
-    description: "Endpoint coverage, edge case analysis"
-  - name: "security_audit"
-    type: "object"
-    description: "Auth requirements, hardcoded secret detection"
+description: "Generates API test suites from OpenAPI, Swagger, or GraphQL schemas covering happy paths, edge cases, and security. Use when an API schema is finalized and endpoint test coverage is needed, or when hardcoded tokens or production URLs may be present in test files."
 ---
 
 # generating-api-tests
 
 Generate comprehensive API test suites from OpenAPI, Swagger, or GraphQL schemas. Produces happy path tests + edge cases (null fields, empty arrays, boundary values). Detects security issues (hardcoded tokens, production URLs).
+
+## Quick Reference
+
+**Phase:** post-coding  
+**Platforms:** api  
+**Inputs:**
+- `schema` (object|string, required) — OpenAPI 3.x, Swagger 2.0, or GraphQL SDL file path
+- `test_style` (string, optional) — jest | pytest | ts-rest (default: jest)
+- `base_url` (string, optional) — non-production API base URL
+
+**Outputs:**
+- `test_suites` — generated test files by endpoint
+- `schema_coverage_report` — endpoint coverage and edge case analysis
+- `security_audit` — auth requirements and hardcoded secret detection
+
+**Depends on:** test-driven-development
 
 ## When to Use
 

@@ -1,40 +1,27 @@
 ---
 name: generating-mobile-tests
-version: "1.0.0"
-description: "Generate iOS/Android mobile tests with platform detection and accessibility checks"
-category: generation
-phase: post-coding
-platforms: ["ios", "android"]
-dependencies: ["test-driven-development"]
-soft_dependencies: []
-input_schema:
-  - name: "platform"
-    type: "string"
-    required: false
-    description: "ios | android | cross-platform (auto-detect if omitted)"
-  - name: "screen_list"
-    type: "array"
-    required: true
-    description: "List of screen names to test"
-  - name: "test_scenarios"
-    type: "array"
-    required: true
-    description: "User flows: tap, swipe, input, assertions"
-output_schema:
-  - name: "test_suites"
-    type: "array"
-    description: "Generated test files (XCTest, Espresso, or Appium)"
-  - name: "accessibility_audit"
-    type: "object"
-    description: "WCAG A11y violations found"
-  - name: "platform_detected"
-    type: "string"
-    description: "ios | android | flutter"
+description: "Generates native and cross-platform mobile tests (XCTest, Espresso, Appium) with platform auto-detection and accessibility validation. Use when mobile app structure is stable, or when VoiceOver/TalkBack labels, touch target sizes, or device rotation coverage need verification."
 ---
 
 # generating-mobile-tests
 
 Generate native and cross-platform mobile tests. Auto-detects platform from project structure (Xcode, Gradle, flutter.yaml). Produces framework-specific code: XCTest (Swift) for iOS, Espresso (Kotlin) for Android, Appium (TypeScript) for cross-platform. Validates accessibility: VoiceOver labels, touch targets >= 44pt.
+
+## Quick Reference
+
+**Phase:** post-coding  
+**Platforms:** ios, android  
+**Inputs:**
+- `platform` (string, optional) — ios | android | cross-platform (auto-detected if omitted)
+- `screen_list` (array, required) — screen names to test
+- `test_scenarios` (array, required) — user flows: tap, swipe, input, assertions
+
+**Outputs:**
+- `test_suites` — generated test files (XCTest, Espresso, or Appium)
+- `accessibility_audit` — WCAG violations found
+- `platform_detected` — ios | android | flutter
+
+**Depends on:** test-driven-development
 
 ## When to Use
 

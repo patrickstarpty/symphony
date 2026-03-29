@@ -1,30 +1,23 @@
 ---
 name: parsing-requirements
-version: "1.0.0"
-description: "Parse issue description into structured AC, detect ambiguities, flag missing information"
-category: analysis
-phase: pre-coding
-platforms: ["all"]
-dependencies: []
-input_schema:
-  - name: "issue_description"
-    type: "string"
-    required: true
-  - name: "issue_metadata"
-    type: "object"
-    required: false
-output_schema:
-  - name: "acceptance_criteria"
-    type: "array"
-  - name: "ambiguities"
-    type: "array"
-  - name: "missing"
-    type: "array"
+description: "Parses issue descriptions into structured, testable acceptance criteria. Use when starting any issue before coding begins, or when AC sections are vague, missing, or contain ambiguous language."
 ---
 
 # parsing-requirements
 
 Parse issue descriptions into structured, testable acceptance criteria. Detect ambiguity and flag missing information before coding begins.
+
+## Quick Reference
+
+**Phase:** pre-coding  
+**Inputs:**
+- `issue_description` (string, required) — raw issue text
+- `issue_metadata` (object, optional) — issue labels, reporter, links
+
+**Outputs:**
+- `acceptance_criteria` — structured AC list with testability flags
+- `ambiguities` — list of vague or undefined terms
+- `missing` — list of absent requirements
 
 ## When to Use
 

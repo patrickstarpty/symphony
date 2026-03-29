@@ -1,44 +1,28 @@
 ---
 name: generating-playwright-tests
-version: "1.0.0"
-description: "Generate Page Object Model tests from HTML pages with stable selectors and accessibility assertions"
-category: generation
-phase: post-coding
-platforms: ["web"]
-dependencies: ["test-driven-development"]
-soft_dependencies: []
-input_schema:
-  - name: "page_url"
-    type: "string"
-    required: true
-    description: "URL of page to analyze (http:// or file://)"
-  - name: "test_scenarios"
-    type: "array"
-    required: true
-    description: "List of test scenarios describing user flows"
-  - name: "output_format"
-    type: "string"
-    required: false
-    default: "ts"
-    description: "ts | js"
-output_schema:
-  - name: "page_objects"
-    type: "array"
-    description: "Generated Page Object Model classes"
-  - name: "test_specs"
-    type: "array"
-    description: "Generated test spec files"
-  - name: "selector_audit"
-    type: "object"
-    description: "Selector stability analysis"
-  - name: "accessibility_issues"
-    type: "array"
-    description: "Found accessibility violations"
+description: "Generates type-safe Playwright tests using Page Object Model with stable selectors and accessibility assertions. Use when HTML/UI is stabilized and E2E scaffolding is needed, or when fragile selectors, hardcoded waits, or missing WCAG accessibility checks are present."
 ---
 
 # generating-playwright-tests
 
 Generate type-safe Playwright tests using Page Object Model pattern. Analyzes HTML, extracts stable selectors, flags fragile DOM patterns, generates spec files with AAA structure.
+
+## Quick Reference
+
+**Phase:** post-coding  
+**Platforms:** web  
+**Inputs:**
+- `page_url` (string, required) — URL to analyze (http:// or file://)
+- `test_scenarios` (array, required) — user flows to cover
+- `output_format` (string, optional) — ts | js (default: ts)
+
+**Outputs:**
+- `page_objects` — generated Page Object Model classes
+- `test_specs` — generated spec files
+- `selector_audit` — selector stability analysis
+- `accessibility_issues` — WCAG violations found
+
+**Depends on:** test-driven-development
 
 ## When to Use
 

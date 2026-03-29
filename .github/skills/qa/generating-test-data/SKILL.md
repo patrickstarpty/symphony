@@ -1,46 +1,28 @@
 ---
 name: generating-test-data
-version: "1.0.0"
-description: "Generate domain-realistic test fixtures with sanitized PII, validated distributions"
-category: generation
-phase: during-coding
-platforms: ["all"]
-dependencies: []
-soft_dependencies: ["test-driven-development"]
-input_schema:
-  - name: "domain"
-    type: "string"
-    required: true
-    description: "insurance | financial | healthcare"
-  - name: "entity_type"
-    type: "string"
-    required: true
-    description: "policy | claim | customer | quote"
-  - name: "count"
-    type: "integer"
-    required: false
-    default: 10
-  - name: "output_format"
-    type: "string"
-    required: false
-    description: "json | yaml | csv"
-    default: "json"
-output_schema:
-  - name: "fixtures"
-    type: "array"
-  - name: "pii_audit"
-    type: "object"
-    description: "PII scan results"
-  - name: "distribution_report"
-    type: "object"
-    description: "Statistical validation"
-  - name: "generated_files"
-    type: "array"
+description: "Generates domain-realistic test fixtures with PII sanitization and validated statistical distributions. Use when writing tests requiring realistic insurance domain data (policy, claim, customer, quote), or before committing fixtures to verify no real PII is present."
 ---
 
 # generating-test-data
 
 Generate domain-realistic test data with sanitized PII and validated statistical properties. Supports insurance domain entities: policy, claim, customer, quote.
+
+## Quick Reference
+
+**Phase:** during-coding  
+**Inputs:**
+- `domain` (string, required) — insurance | financial | healthcare
+- `entity_type` (string, required) — policy | claim | customer | quote
+- `count` (integer, optional) — default 10
+- `output_format` (string, optional) — json | yaml | csv (default: json)
+
+**Outputs:**
+- `fixtures` — generated test data records
+- `pii_audit` — PII scan results
+- `distribution_report` — statistical validation of distributions
+- `generated_files` — output file paths
+
+**Works better with:** test-driven-development
 
 ## When to Use
 

@@ -1,43 +1,28 @@
 ---
 name: analyzing-defects
-version: "1.1.0"
-description: "Analyze defect root causes, identify patterns, feed insights into Knowledge Base"
-category: analysis
-phase: post-coding
-platforms: ["all"]
-dependencies: ["classifying-test-failures", "generating-qa-report", "healing-broken-tests"]
-input_schema:
-  - name: "defect_data"
-    type: "array"
-    required: true
-    description: "Defect records: issue ID, root cause, component, resolution"
-  - name: "time_window"
-    type: "string"
-    required: false
-    description: "30d | 90d | all. Default: 90d."
-  - name: "scope"
-    type: "string"
-    required: false
-    description: "team | component | project | organization"
-output_schema:
-  - name: "patterns"
-    type: "array"
-  - name: "root_cause_distribution"
-    type: "object"
-    description: "logic | integration | data | config | concurrency"
-  - name: "hotspots"
-    type: "array"
-    description: "Components with disproportionate defect density"
-  - name: "recommendations"
-    type: "array"
-  - name: "knowledge_base_updates"
-    type: "array"
-    description: "Proposed updates for human review"
+description: "Analyzes defect root causes, identifies recurring patterns and component hotspots, and proposes Knowledge Base updates. Use when logic, integration, data, config, or concurrency defect patterns need investigation after classifying failures and generating QA reports."
 ---
 
 # analyzing-defects
 
 Analyze root causes of test failures and defects. Identify patterns and hotspots. Propose Knowledge Base updates for human review.
+
+## Quick Reference
+
+**Phase:** post-coding  
+**Inputs:**
+- `defect_data` (array, required) — defect records: issue ID, root cause, component, resolution
+- `time_window` (string, optional) — 30d | 90d | all (default: 90d)
+- `scope` (string, optional) — team | component | project | organization
+
+**Outputs:**
+- `patterns` — recurring defect patterns with trend data
+- `root_cause_distribution` — breakdown by logic | integration | data | config | concurrency
+- `hotspots` — components with above-average defect density
+- `recommendations` — specific, actionable improvement suggestions
+- `knowledge_base_updates` — proposed KB entries (always for human review)
+
+**Depends on:** classifying-test-failures, generating-qa-report, healing-broken-tests
 
 ## When to Use
 

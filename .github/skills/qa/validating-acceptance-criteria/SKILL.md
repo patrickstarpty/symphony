@@ -1,39 +1,27 @@
 ---
 name: validating-acceptance-criteria
-version: "1.0.0"
-description: "Map AC to test evidence, score SATISFIED/PARTIAL/UNMET per criterion"
-category: evaluation
-phase: post-coding
-platforms: ["all"]
-dependencies: ["parsing-requirements"]
-soft_dependencies: ["analyzing-coverage"]
-input_schema:
-  - name: "acceptance_criteria"
-    type: "array"
-    required: true
-  - name: "test_results"
-    type: "object"
-    required: true
-  - name: "git_diff"
-    type: "string"
-    required: true
-output_schema:
-  - name: "criteria"
-    type: "array"
-    description: "Per-AC status + evidence"
-  - name: "satisfied"
-    type: "number"
-  - name: "partial"
-    type: "number"
-  - name: "unmet"
-    type: "number"
-  - name: "verdict"
-    type: "string"
+description: "Maps each acceptance criterion to concrete test evidence and scores it SATISFIED, PARTIAL, or UNMET. Use when tests have run and AC are available from parsing-requirements, or when a traceability matrix and Acceptance dimension verdict are needed."
 ---
 
 # validating-acceptance-criteria
 
 Map each acceptance criterion to concrete test evidence. Score every AC as SATISFIED, PARTIAL, or UNMET. Any non-SATISFIED AC fails the Acceptance dimension.
+
+## Quick Reference
+
+**Phase:** post-coding  
+**Inputs:**
+- `acceptance_criteria` (array, required) — from parsing-requirements
+- `test_results` (object, required) — test runner output
+- `git_diff` (string, required) — diff for implementation evidence
+
+**Outputs:**
+- `criteria` — per-AC status and evidence map
+- `satisfied` / `partial` / `unmet` — counts per status
+- `verdict` — PASS | FAIL
+
+**Depends on:** parsing-requirements  
+**Works better with:** analyzing-coverage (enriches coverage evidence per AC)
 
 ## When to Use
 

@@ -1,45 +1,27 @@
 ---
 name: generating-perf-tests
-version: "1.0.0"
-description: "Generate load tests with realistic user profiles, think times, and SLA assertions"
-category: generation
-phase: post-coding
-platforms: ["all"]
-dependencies: []
-soft_dependencies: ["test-driven-development"]
-input_schema:
-  - name: "endpoints"
-    type: "array"
-    required: true
-    description: "List of endpoints to load test"
-  - name: "load_profile"
-    type: "string"
-    required: true
-    description: "ramp-up | spike | soak | custom"
-  - name: "target_sla"
-    type: "object"
-    required: true
-    description: "SLA targets: p95_latency_ms, error_rate_pct, throughput_rps"
-  - name: "test_tool"
-    type: "string"
-    required: false
-    default: "k6"
-    description: "k6 | locust | gatling"
-output_schema:
-  - name: "load_test_code"
-    type: "string"
-    description: "Generated test script"
-  - name: "baseline_metrics"
-    type: "object"
-    description: "Single-user baseline (latency, CPU, memory)"
-  - name: "load_profile_config"
-    type: "object"
-    description: "VU ramp-up schedule, think times"
+description: "Generates load test scripts (K6, Locust, Gatling) with realistic user profiles, think times, and SLA assertions. Use when API is production-ready and performance baselines need establishing, or when converting SLAs into ramp-up, spike, or soak test configurations."
 ---
 
 # generating-perf-tests
 
 Generate load test scripts with realistic user behavior. Converts business SLAs (p95 latency < 200ms, error rate < 0.5%) into load profiles. Includes think time between requests, proper data correlation, and SLA assertions. Supports K6, Locust, and Gatling.
+
+## Quick Reference
+
+**Phase:** post-coding  
+**Inputs:**
+- `endpoints` (array, required) — endpoints to load test
+- `load_profile` (string, required) — ramp-up | spike | soak | custom
+- `target_sla` (object, required) — p95_latency_ms, error_rate_pct, throughput_rps
+- `test_tool` (string, optional) — k6 | locust | gatling (default: k6)
+
+**Outputs:**
+- `load_test_code` — generated test script
+- `baseline_metrics` — single-user baseline (latency, CPU, memory)
+- `load_profile_config` — VU ramp-up schedule and think times
+
+**Works better with:** test-driven-development
 
 ## When to Use
 

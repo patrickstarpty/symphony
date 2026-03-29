@@ -1,45 +1,29 @@
 ---
 name: selecting-regressions
-version: "1.0.0"
-description: "Select relevant regression tests from change impact analysis — run only affected tests"
-category: execution
-phase: post-coding
-platforms: ["all"]
-dependencies: ["scoring-risk"]
-soft_dependencies: ["generating-playwright-tests", "generating-api-tests", "generating-mobile-tests", "generating-perf-tests"]
-input_schema:
-  - name: "git_diff"
-    type: "string"
-    required: true
-  - name: "test_catalog"
-    type: "object"
-    required: true
-    description: "Inventory of all available tests with metadata"
-  - name: "dependency_graph"
-    type: "object"
-    required: false
-    description: "From Knowledge Base MCP or build system"
-  - name: "risk_score"
-    type: "object"
-    required: false
-    description: "From scoring-risk skill"
-output_schema:
-  - name: "selected_tests"
-    type: "array"
-    description: "Ordered by priority"
-  - name: "skipped_tests"
-    type: "array"
-    description: "With justification"
-  - name: "estimated_time"
-    type: "number"
-  - name: "confidence"
-    type: "string"
-    description: "high (full graph) | medium (heuristic) | low (filename only)"
+description: "Selects the minimal relevant regression test set from change impact analysis to reduce CI execution time. Use when coding is complete and before running tests, especially when the full suite is slow or a dependency graph is available to identify affected modules."
 ---
 
 # selecting-regressions
 
 Select regression tests for the change using change impact analysis. Minimize test execution time while maintaining confidence.
+
+## Quick Reference
+
+**Phase:** post-coding  
+**Inputs:**
+- `git_diff` (string, required)
+- `test_catalog` (object, required) — inventory of all available tests with metadata
+- `dependency_graph` (object, optional) — from Knowledge Base MCP or build system
+- `risk_score` (object, optional) — from scoring-risk skill
+
+**Outputs:**
+- `selected_tests` — ordered by priority
+- `skipped_tests` — with justification
+- `estimated_time` — projected execution time in seconds
+- `confidence` — high (full graph) | medium (heuristic) | low (filename only)
+
+**Depends on:** scoring-risk  
+**Works better with:** generating-playwright-tests, generating-api-tests, generating-mobile-tests, generating-perf-tests
 
 ## When to Use
 

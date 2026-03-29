@@ -1,41 +1,28 @@
 ---
 name: reviewing-code-quality
-version: "1.0.0"
-description: "Two-stage review: spec compliance first, then code quality"
-category: evaluation
-phase: post-coding
-platforms: ["all"]
-dependencies: ["generating-qa-report"]
-input_schema:
-  - name: "git_diff"
-    type: "string"
-    required: true
-  - name: "qa_report"
-    type: "object"
-    required: true
-    description: "QA report must pass all gates before code review"
-  - name: "spec_references"
-    type: "array"
-    required: false
-  - name: "review_focus"
-    type: "array"
-    required: false
-output_schema:
-  - name: "stage1_spec_compliance"
-    type: "object"
-  - name: "stage2_code_quality"
-    type: "object"
-  - name: "verdict"
-    type: "string"
-    description: "APPROVE | REQUEST_CHANGES | COMMENT"
-  - name: "comments"
-    type: "array"
-    description: "Line-level review comments"
+description: "Performs two-stage code review: spec compliance first, then code quality (SOLID, complexity, security). Use when QA gates pass and a structured APPROVE/REQUEST_CHANGES/COMMENT verdict with line-level comments is needed."
 ---
 
 # reviewing-code-quality
 
 Two-stage code review: verify spec compliance first, then evaluate code quality. Consumed by Code Reviewer agent (Claude Sonnet 4.6) for cross-model objectivity.
+
+## Quick Reference
+
+**Phase:** post-coding  
+**Inputs:**
+- `git_diff` (string, required)
+- `qa_report` (object, required) — all QA gates must pass before review proceeds
+- `spec_references` (array, optional)
+- `review_focus` (array, optional)
+
+**Outputs:**
+- `stage1_spec_compliance` — spec compliance result
+- `stage2_code_quality` — code quality metrics and issues
+- `verdict` — APPROVE | REQUEST_CHANGES | COMMENT
+- `comments` — line-level review comments
+
+**Depends on:** generating-qa-report
 
 ## When to Use
 

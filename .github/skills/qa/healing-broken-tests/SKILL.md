@@ -1,38 +1,28 @@
 ---
 name: healing-broken-tests
-version: "1.0.0"
-description: "Auto-repair tests broken by intentional code changes — update selectors, fixtures, expected values"
-category: execution
-phase: post-coding
-platforms: ["all"]
-dependencies: ["classifying-test-failures"]
-soft_dependencies: ["generating-qa-report"]
-input_schema:
-  - name: "broken_tests"
-    type: "array"
-    required: true
-  - name: "git_diff"
-    type: "string"
-    required: true
-  - name: "intent"
-    type: "string"
-    required: true
-    description: "Intended change description (from issue/PR)"
-output_schema:
-  - name: "healed_tests"
-    type: "array"
-  - name: "unhealed_tests"
-    type: "array"
-  - name: "patches"
-    type: "array"
-  - name: "confidence"
-    type: "string"
-    description: "high (locator) | medium (expected value) | low (logic)"
+description: "Auto-repairs tests broken by intentional code changes by updating selectors, fixture values, and expected assertions. Use when test failures are classified and some are caused by deliberate behavior changes rather than real bugs, before QA gate reporting."
 ---
 
 # healing-broken-tests
 
 Auto-repair tests broken by intentional code changes. Categorizes breakage type and applies high-confidence fixes only.
+
+## Quick Reference
+
+**Phase:** post-coding  
+**Inputs:**
+- `broken_tests` (array, required) — failing test names/paths
+- `git_diff` (string, required)
+- `intent` (string, required) — intended change description from issue/PR
+
+**Outputs:**
+- `healed_tests` — tests now passing after repair
+- `unhealed_tests` — flagged for human review
+- `patches` — applied changes per test
+- `confidence` — high (locator) | medium (expected value) | low (logic)
+
+**Depends on:** classifying-test-failures  
+**Works better with:** generating-qa-report
 
 ## When to Use
 
