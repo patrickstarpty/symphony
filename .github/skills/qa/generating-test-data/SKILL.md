@@ -11,7 +11,7 @@ Generate domain-realistic test data with sanitized PII and validated statistical
 
 **Phase:** during-coding  
 **Inputs:**
-- `domain` (string, required) — insurance (for other domains, provide custom schema in `references/`)
+- `domain` (string, required) — insurance (default) | or any domain with a schema reference in `references/`
 - `entity_type` (string, required) — policy | claim | customer | quote
 - `count` (integer, optional) — default 10
 - `output_format` (string, optional) — json | yaml | csv (default: json)
@@ -23,6 +23,8 @@ Generate domain-realistic test data with sanitized PII and validated statistical
 - `generated_files` — output file paths
 
 **Works better with:** test-driven-development
+
+**Domain note:** Insurance schemas are provided in `references/insurance-data-schemas.md`. For other domains (financial, healthcare, retail), replace this reference file with your own entity definitions — the generation technique remains the same.
 
 ## When to Use
 

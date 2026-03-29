@@ -1,6 +1,6 @@
 ---
 name: generating-qa-report
-description: "Aggregates Pass Rate, Coverage, and Acceptance dimensions into a structured QA Report with overall PASS/FAIL verdict. Use when all three P1 evaluation skills (analyzing-coverage, validating-acceptance-criteria, classifying-test-failures) have produced outputs and a quality gate decision needs to be written to the issue workpad."
+description: "Aggregates Pass Rate, Coverage, and Acceptance dimensions into a structured QA Report with overall PASS/FAIL verdict. Use when all three evaluation skills (analyzing-coverage, validating-acceptance-criteria, classifying-test-failures) have produced outputs and a quality gate decision needs to be written to the issue workpad."
 ---
 
 # generating-qa-report
@@ -26,7 +26,7 @@ Aggregate the three evaluation dimensions (Pass Rate, Coverage, Acceptance) into
 
 ## When to Use
 
-After all three P1 evaluation skills have produced their outputs. This is the final aggregation step before the verdict is written to the issue workpad.
+After all three evaluation skills have produced their outputs. This is the final aggregation step before the verdict is written to the issue workpad.
 
 ## Instructions
 
@@ -61,9 +61,22 @@ After all three P1 evaluation skills have produced their outputs. This is the fi
 - **Advisory mode still states what would fail under strict.** Visibility is non-negotiable.
 - **Don't editorialize.** Report facts, don't add subjective commentary.
 
+## Output
+
+Write the QA report to the `## Copilot Workpad` issue comment under:
+```markdown
+### QA: report
+OVERALL: PASS ✅  (or FAIL ❌)
+Pass Rate: PASS/FAIL (X% passing, threshold Y%)
+Coverage: PASS/FAIL (X%, threshold Y%)
+Acceptance: PASS/FAIL (N satisfied, N partial, N unmet)
+Gate mode: strict | advisory
+```
+On FAIL: list which dimension(s) failed and what action is required before moving to Human Review.
+
 ## Consumers
 
 - Issue workpad (written as markdown comment)
-- `reviewing-code-quality` (P3) — QA gates must pass before code review
-- `healing-broken-tests` (P3) — prioritizes which failures to address
-- `analyzing-defects` (P3) — aggregate quality trends
+- `reviewing-code-quality` — QA gates must pass before code review
+- `healing-broken-tests` — prioritizes which failures to address
+- `analyzing-defects` — aggregate quality trends

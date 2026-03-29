@@ -33,10 +33,12 @@ Invoke after `classifying-test-failures`, `healing-broken-tests`, and `generatin
 1. Receive failure records from `classifying-test-failures` and healed/unhealed from `healing-broken-tests`
 2. Run `scripts/root-cause-classifier.py`
    - Categorize each defect: logic | integration | data | config | concurrency
+   **Script unavailable:** manually classify each defect using the Root Cause Categories table below.
 3. Run `scripts/pattern-detector.py`
    - Time-series analysis (freq by root cause, trend)
    - Component clustering (which components have defects)
    - Pattern recognition (recurring issues)
+   **Script unavailable:** group defects by root_cause field and count occurrences. Any category with ≥5 instances is a pattern.
 4. Identify hotspots (components with defect density > org average)
 5. Generate recommendations:
    - Increase test coverage for hotspot components
@@ -45,6 +47,7 @@ Invoke after `classifying-test-failures`, `healing-broken-tests`, and `generatin
 6. Run `scripts/knowledge-base-writer.py`
    - Format proposals for Knowledge Base (patterns, hotspots, recommendations)
    - Always proposed for human review, never auto-committed
+   **Script unavailable:** write proposed KB entries as a markdown list under 'knowledge_base_updates' in the workpad and ask human reviewer to approve before committing.
 7. Output knowledge_base_updates for review
 
 ## Root Cause Categories

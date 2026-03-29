@@ -28,6 +28,15 @@ Auto-repair tests broken by intentional code changes. Categorizes breakage type 
 
 Invoke after test failures classified but before reporting to QA gates. Fixes broken tests caused by intentional changes so they don't block the quality gate.
 
+## Prerequisites
+
+This skill requires supporting infrastructure to operate. Before invoking:
+
+1. **CI integration:** Failure records must be fed from CI output (not manually entered). Without CI data, `classifying-test-failures` cannot produce the input this skill needs.
+2. **Knowledge Base populated:** Defect history (≥10 records) improves healing confidence. Without it, all classifications default to "Low" confidence requiring human review.
+
+**Without this infrastructure:** Use `classifying-test-failures` only. Fix tests manually based on the classification output. Do not attempt auto-healing without CI + Knowledge Base.
+
 ## Instructions
 
 1. Receive list of failing tests from `classifying-test-failures`
@@ -39,6 +48,7 @@ Invoke after test failures classified but before reporting to QA gates. Fixes br
 4. For high-confidence failures:
    - Run `scripts/locator-updater.py` → find new selector in updated code
    - Update assertion values from diff
+   **Script unavailable:** for locator changes, search the updated code for the new element identifier (data-testid, aria-label) and update the selector manually. For expected value changes, read the diff and update the assertion to match the new intentional behavior.
 5. Apply patches to test files
 6. Re-run healed tests to verify they pass
 7. Output `healed_tests` (now passing) and `unhealed_tests` (flagged for human review)

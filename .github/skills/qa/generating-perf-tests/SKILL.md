@@ -53,3 +53,5 @@ Use when API is production-ready and performance baselines established.
 
 - `perf-testing-patterns.md` — virtual user modeling, think time, data correlation, ramping strategies
 - `insurance-load-profiles.md` — typical insurance system loads, peak hours, concurrent user distribution
+
+> **Domain note:** `insurance-load-profiles.md` provides insurance system load patterns. For other domains, define your own load profile parameters (peak users, think times, SLA targets) and pass them via the `target_sla` input.

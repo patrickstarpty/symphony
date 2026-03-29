@@ -31,8 +31,11 @@ Invoke at issue start, before coding begins. Feeds two consumers:
 ## Instructions
 
 1. Run `scripts/change-scope-analyzer.py` on git diff → files changed, lines delta, change magnitude
+   **Script unavailable:** count changed files and estimate lines delta from `git diff --stat`. Use: <5 files = low scope, 5-15 = medium, >15 = high.
 2. Run `scripts/component-criticality.py` → component tier and base criticality score
+   **Script unavailable:** classify by path — payment/auth directories = critical (35), business logic = medium (20), utilities = low (10).
 3. Run `scripts/defect-density-calculator.py` → historical defect count + density for affected files
+   **Script unavailable:** skip defect history factor (score = 0), note in output: `confidence: 'low'`.
 4. Calculate overall risk score (0-100) using the model in references/risk-scoring-model.md
 5. Map score to risk_level and recommended coverage thresholds
 6. Output JSON with all factors and thresholds

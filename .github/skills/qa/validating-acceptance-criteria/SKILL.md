@@ -23,6 +23,8 @@ Map each acceptance criterion to concrete test evidence. Score every AC as SATIS
 **Depends on:** parsing-requirements  
 **Works better with:** analyzing-coverage (enriches coverage evidence per AC)
 
+**Load before starting:** `rules/qa-standards.md` — AC traceability requirements and test independence rules
+
 ## When to Use
 
 Post-coding, after tests have run. Requires AC list from `parsing-requirements` and test results. Optionally enriched by `analyzing-coverage` data.
@@ -35,6 +37,7 @@ Post-coding, after tests have run. Requires AC list from `parsing-requirements` 
    - **Coverage data** (if available from `analyzing-coverage`): Whether relevant code paths are covered
 
 2. Run `scripts/ac-evidence-mapper.py` for keyword-based matching as a baseline.
+   **Script unavailable:** manually read each AC and search the test files for test names or assertions that correspond to each criterion. Assign SATISFIED/PARTIAL/UNMET by inspection.
 
 3. Score each AC:
    - **SATISFIED:** Test exists AND passes that directly validates this criterion
@@ -73,6 +76,16 @@ Post-coding, after tests have run. Requires AC list from `parsing-requirements` 
 - **PARTIAL is not a soft pass.** It counts as a gap in the Acceptance dimension.
 - **Never SATISFIED on code-only evidence.** Implementation without a passing test is PARTIAL at best.
 - **Preserve AC text exactly.** Don't rephrase criteria in the output.
+
+## Output
+
+Write AC validation results to the `## Copilot Workpad` issue comment:
+```markdown
+### QA: acceptance-criteria
+verdict: PASS | FAIL
+satisfied: N | partial: N | unmet: N
+[per-AC breakdown with evidence test names]
+```
 
 ## Consumers
 

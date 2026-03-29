@@ -20,15 +20,16 @@ Classify test failures into actionable categories: real bugs that need fixing, f
 - `real_bugs` / `flaky` / `env_issues` — counts per category
 - `verdict` — PASS (zero real-bugs) | FAIL
 
-## When to Use
+**Load before starting:** `rules/qa-standards.md` — AC traceability requirements and test independence rules
 
-Post-coding, when test execution has failures. Feeds the Pass Rate dimension into `generating-qa-report`. Also consumed by `healing-broken-tests` (P3).
+## When to Use Feeds the Pass Rate dimension into `generating-qa-report`. Also consumed by `healing-broken-tests`.
 
 ## Instructions
 
 1. Run `scripts/retry-failures.sh` for each failed test (up to retry_count, default 2):
    - Re-runs each failed test in isolation
    - Captures exit code and stderr for each attempt
+   **Script unavailable:** re-run the failed test 2× manually. If it passes on retry → flaky. If it always fails → real-bug or env-issue.
 
 2. Classify based on retry results and error patterns:
    - **real-bug:** Consistent assertion error with identical stack trace across all retries
@@ -36,6 +37,7 @@ Post-coding, when test execution has failures. Feeds the Pass Rate dimension int
    - **env-issue:** Error matches environment patterns (connection refused, timeout, OOM, port conflict)
 
 3. Run `scripts/classify-failure.py` for pattern-based error matching as a secondary signal.
+   **Script unavailable:** inspect the failure message — 'element not found' or selector changes → env-issue; assertion mismatch on business logic → real-bug; inconsistent across runs → flaky.
 
 4. Determine verdict:
    - **PASS:** Zero real-bugs (flaky and env-issues reported but don't block)
@@ -69,12 +71,20 @@ Post-coding, when test execution has failures. Feeds the Pass Rate dimension int
 
 ## Guardrails
 
-- **Max 2 retries in P1.** Don't burn CI time with excessive retries.
+- **Max 2 retries.** Don't burn CI time with excessive retries.
 - **Passing on retry = flaky, not fixed.** Don't silently promote to passing.
 - **Identical assertion across all retries = real bug.** Don't classify as flaky just because it's intermittent.
-- **P3 enhancement:** Historical pass rate analysis via Knowledge Base replaces simple retry heuristics.
+- **Future enhancement (not yet available):** Historical pass rate analysis via Knowledge Base replaces simple retry heuristics.
+
+## Output
+
+Write failure classification to the `## Copilot Workpad` issue comment:
+```markdown
+### QA: failures
+verdict: PASS | FAIL
+real_bugs: N | flaky: N | env_issues: N
+[per-failure: test_id | classification | reason]
+```
 
 ## Consumers
-
-- `generating-qa-report` — receives Pass Rate dimension and classified failure list
 - `healing-broken-tests` — receives flaky and env-issue failures for repair

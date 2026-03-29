@@ -34,12 +34,14 @@ Invoke at the start of every issue evaluation — before `test-driven-developmen
    - **Untestable:** Contains vague qualifiers ("should handle appropriately", "must be fast")
 
 3. Run `scripts/extract-ac.py` on the raw issue text for regex-based extraction as a baseline.
+   **Script unavailable:** parse AC manually — look for Given/When/Then, bullet lists, or numbered criteria in the issue text.
 
 4. Run `scripts/ambiguity-detector.py` on each AC to flag:
    - Vague verbs: "appropriate", "properly", "correctly", "good"
    - Missing thresholds: "large number", "quickly", "many"
    - Undefined terms: "etc.", "and so on", "similar"
    - Implicit assumptions: references to undocumented behavior
+   **Script unavailable:** manually scan AC text for vague verbs listed in references/ambiguity-signals.md (e.g., 'appropriate', 'sufficient', 'handle', 'support', 'manage').
 
 5. Identify missing information:
    - No error message specification
@@ -66,8 +68,19 @@ Invoke at the start of every issue evaluation — before `test-driven-developmen
 - **Zero extractable ACs → output `missing`** rather than fabricating criteria.
 - **Preserve original wording** in the `text` field — don't rephrase.
 
+## Output
+
+Write structured AC and ambiguities to the `## Copilot Workpad` issue comment:
+```markdown
+### QA: parsing-requirements
+acceptance_criteria: [n items]
+ambiguities: [list any vague terms]
+missing: [list absent requirements]
+```
+If no workpad exists yet, create it as a new comment on the issue.
+
 ## Consumers
 
 - `test-driven-development` — uses AC list to generate test case matrix
 - `validating-acceptance-criteria` — uses structured AC for evidence mapping
-- `scoring-risk` (P3) — uses AC complexity for risk assessment
+- `scoring-risk` — uses AC complexity for risk assessment

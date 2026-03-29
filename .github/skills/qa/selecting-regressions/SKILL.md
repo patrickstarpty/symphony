@@ -46,6 +46,7 @@ Invoke after coding phase completes but before running tests. Determines which t
 4. Run `scripts/test-selector.py`
    - Input: affected tests, risk score (if available), test history
    - Output: prioritized test list with estimated runtime
+   **Script unavailable:** select tests manually by file path overlap — any test file matching or importing a changed module is a candidate. Include all tests in the same directory as changed files.
 
 5. Apply guardrails:
    - Risk=critical/high → add full regression suite as fallback

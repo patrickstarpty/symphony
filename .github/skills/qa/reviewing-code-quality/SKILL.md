@@ -24,6 +24,11 @@ Two-stage code review: verify spec compliance first, then evaluate code quality.
 
 **Depends on:** generating-qa-report
 
+**Load before starting:**
+- `rules/review-guidelines.md` — review scoring criteria and comment format
+- `rules/security-standards.md` — security checklist items
+- `rules/qa-standards.md` — quality thresholds to verify code meets
+
 ## When to Use
 
 Invoke after QA report is generated and QA gates PASS. If QA gates fail, do not review code.
