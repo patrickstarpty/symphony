@@ -46,7 +46,7 @@ Use when API schema is finalized and endpoints stable. Run before committing API
 
 ## Consumers
 
-- `test-driven-development` — provides API testing context
+- CI/CD system — executes generated API test suites against staging
 - Backend API teams — validate against schemas pre-deployment
 
 ## References

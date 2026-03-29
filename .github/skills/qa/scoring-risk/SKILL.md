@@ -75,7 +75,7 @@ risk_score = (scope_points + criticality_points + defect_points + complexity_poi
 
 ## Guardrails
 
-- Risk scoring is advisory only — never auto-approve based on low score
-- Component registry maintained by humans, not auto-generated
-- Without defect history, assume neutral (don't penalize unknown components)
-- Never block a change solely on score — only inform thresholds
+- **NEVER auto-approve based on low score.** Risk scoring is advisory; all merges still require appropriate review.
+- **NEVER auto-generate or update the component registry.** It is maintained by humans only.
+- **NEVER assign non-zero defect_points when defect history is unavailable.** Use neutral (0) when Knowledge Base is unreachable.
+- **NEVER block a change solely on score.** Use score to inform coverage thresholds only.

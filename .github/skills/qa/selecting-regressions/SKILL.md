@@ -72,4 +72,4 @@ Invoke after coding phase completes but before running tests. Determines which t
 - Low confidence → warn + suggest full suite
 - Shared infrastructure changes (deps, config, middleware) → full regression
 - Additive: when in doubt, include a test
-- Max 15 min execution time; if exceeded, recommend sampling strategy
+- **Max 15 min execution time.** If exceeded, run smoke suite only (tests labeled `smoke` in the test catalog).

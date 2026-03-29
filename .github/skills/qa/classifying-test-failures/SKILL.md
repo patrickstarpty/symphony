@@ -73,3 +73,8 @@ Post-coding, when test execution has failures. Feeds the Pass Rate dimension int
 - **Passing on retry = flaky, not fixed.** Don't silently promote to passing.
 - **Identical assertion across all retries = real bug.** Don't classify as flaky just because it's intermittent.
 - **P3 enhancement:** Historical pass rate analysis via Knowledge Base replaces simple retry heuristics.
+
+## Consumers
+
+- `generating-qa-report` — receives Pass Rate dimension and classified failure list
+- `healing-broken-tests` — receives flaky and env-issue failures for repair

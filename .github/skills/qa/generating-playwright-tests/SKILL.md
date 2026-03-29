@@ -34,7 +34,7 @@ Use after HTML/UI is stabilized to generate test scaffolds. Run before committin
 2. Run `scripts/page-analyzer.py` to extract page structure, interactive elements, ARIA landmarks
 3. Run `scripts/selector-strategy.py` to recommend selectors (data-testid > role > css), flag fragile XPath/nth-child
 4. Generate Page Object Model using `page-object.ts.liquid` template
-5. Generate spec files using `spec.ts.liquid` template with AAA (Arrange/Act/Assert) structure
+5. Generate spec files using `spec.ts.liquid` template with AAA structure
 6. Output includes selector audit and accessibility violations
 
 ## Guardrails
@@ -47,7 +47,7 @@ Use after HTML/UI is stabilized to generate test scaffolds. Run before committin
 
 ## Consumers
 
-- `test-driven-development` — provides test strategy context
+- CI/CD system — executes generated Playwright specs in E2E pipeline
 - E2E test engineers — extend generated Page Objects and specs
 
 ## References

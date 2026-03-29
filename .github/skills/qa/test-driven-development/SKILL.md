@@ -5,7 +5,7 @@ description: "Extends the base TDD skill with QA-specific test case matrix gener
 
 # test-driven-development (QA Extension)
 
-> **Loading:** This extension loads *in addition to* the Superpowers TDD skill at `.github/skills/test-driven-development/`. On conflict, Superpowers wins. This skill adds net-new QA content only.
+> **Loading:** This QA extension adds test-case matrix generation on top of the base TDD skill at `.github/skills/test-driven-development/`. If the base skill's test runner configuration, commit rules, or core Red/Green/Refactor steps conflict with this extension, the base skill's instructions take precedence. This extension adds domain patterns, matrix generation techniques, and framework templates only.
 
 ## Quick Reference
 
@@ -55,7 +55,7 @@ For each acceptance criterion from `parsing-requirements`, generate test cases u
 ### 2. Enhanced TDD Flow
 
 1. **Analyze AC** → build test case matrix using techniques above
-2. **Red** → generate test skeleton from `templates/<framework>.liquid` (AAA structure)
+2. **Red** → generate test skeleton from the matching template: `jest.test.ts.liquid` (Jest), `pytest.py.liquid` (pytest), `playwright.spec.ts.liquid` (Playwright), or `junit.java.liquid` (JUnit)
 3. **Verify Red** → run test, confirm expected failure reason (not syntax error)
 4. **Green** → write minimum implementation to pass
 5. **Verify Green** → run all tests, confirm pass
@@ -88,5 +88,12 @@ Load `references/insurance-domain-patterns.md` for insurance-specific test patte
 
 - **Never skip Red phase.** Writing a test after implementation defeats TDD's design benefit.
 - **No tests for exceptions** listed in `tdd-rules.md § Exceptions`.
-- **Never contradict Superpowers TDD** core principles. QA adds, never overrides.
+- **Never contradict base TDD skill** core principles. QA adds, never overrides.
 - **One assertion per test** (logical assertion — multiple `expect()` for one behavior is fine).
+
+## Consumers
+
+- `generating-playwright-tests` — receives TDD-driven test strategy for E2E scaffolding
+- `generating-api-tests` — receives contract test structure derived from AC matrix
+- `generating-mobile-tests` — receives platform-specific test scenarios from AC matrix
+- `generating-perf-tests` — receives endpoint coverage to inform load test scope

@@ -25,11 +25,11 @@ Generate load test scripts with realistic user behavior. Converts business SLAs 
 
 ## When to Use
 
-Use when API is production-ready and performance baselines established. Never target production. Always define SLA thresholds before running.
+Use when API is production-ready and performance baselines established.
 
 ## Instructions
 
-1. Provide list of endpoints and SLA targets
+1. Accept `endpoints`, `target_sla`, `load_profile`, and `test_tool` from caller inputs.
 2. Specify load profile (ramp-up, spike, soak) and test tool
 3. Run `scripts/load-profile-calculator.py` to convert SLA to VU schedule
 4. Run `scripts/baseline-collector.py` to establish single-user baseline

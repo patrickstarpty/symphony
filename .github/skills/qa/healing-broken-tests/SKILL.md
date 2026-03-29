@@ -51,12 +51,6 @@ Invoke after test failures classified but before reporting to QA gates. Fixes br
 | Expected value | "expected X got Y" + Return value changed intentionally | Update assertion to match new intentional behavior | Medium |
 | Logic change | TypeError, AttributeError, assertion logic broken | Flag for human review — needs intent understanding | Low |
 
-## Confidence Levels
-
-- **High:** Locator updates are mechanical; apply automatically if healed test passes
-- **Medium:** Expected value updates require Intent validation; apply with human review
-- **Low:** Logic changes; always flag for human review. Never auto-heal.
-
 ## Consumers
 
 - CI/CD system — re-run healed tests to verify

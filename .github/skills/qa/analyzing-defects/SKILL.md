@@ -57,28 +57,19 @@ Invoke after `classifying-test-failures`, `healing-broken-tests`, and `generatin
 | Config | Wrong env vars, hardcoded values, missing settings | Config validation, environment tests |
 | Concurrency | Race conditions, deadlock, stale references | Proper locking, async/await patterns |
 
-## Pattern Examples
-
-- **"Password validation never rejects special chars"** → Pattern: validation bypass (logic)
-- **"Payment API breaks on amount > 1000"** → Pattern: numeric boundary (data)
-- **"Tests pass locally, fail on CI"** → Pattern: environment difference (config)
-- **"Flaky tests in parallel execution"** → Pattern: shared state (concurrency)
-
 ## Hotspot Identification
 
-A hotspot is a component with defect density significantly above org average.
+A hotspot is any component where `defect_density > 1.5× org_average`. Density = defects ÷ component_age_days.
 
-**Calculation:**
-```
-org_avg_density = total_defects / total_components
-component_density = component_defects / component_age_days
-is_hotspot = component_density > (org_avg_density * 1.5)
-```
+## Consumers
+
+- Knowledge Base maintainers — review proposed KB updates before committing
+- `scoring-risk` — historical defect patterns inform future risk score calibration
+- Human QA leads — review hotspot list for architectural or process decisions
 
 ## Guardrails
 
-- Patterns require ≥5 data points for statistical significance
-- Recommendations must be specific and actionable
-- Never commit Knowledge Base updates; always propose for human review
-- Sanitize sensitive data before writing (remove user IDs, passwords, PII)
-- Distinguish between local team and org-level patterns
+- **Patterns require ≥5 data points** for statistical significance.
+- **NEVER auto-commit Knowledge Base updates.** Always propose for human review.
+- **Sanitize before writing.** Remove user IDs, passwords, and PII from all KB proposals.
+- **Distinguish scope.** Separate team-level patterns from org-level patterns in output.

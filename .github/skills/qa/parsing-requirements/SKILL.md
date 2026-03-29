@@ -5,8 +5,6 @@ description: "Parses issue descriptions into structured, testable acceptance cri
 
 # parsing-requirements
 
-Parse issue descriptions into structured, testable acceptance criteria. Detect ambiguity and flag missing information before coding begins.
-
 ## Quick Reference
 
 **Phase:** pre-coding  

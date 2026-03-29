@@ -73,3 +73,7 @@ Post-coding, after tests have run. Requires AC list from `parsing-requirements` 
 - **PARTIAL is not a soft pass.** It counts as a gap in the Acceptance dimension.
 - **Never SATISFIED on code-only evidence.** Implementation without a passing test is PARTIAL at best.
 - **Preserve AC text exactly.** Don't rephrase criteria in the output.
+
+## Consumers
+
+- `generating-qa-report` — receives Acceptance dimension verdict and per-AC evidence map

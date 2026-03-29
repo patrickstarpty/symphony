@@ -61,3 +61,7 @@ After test execution completes (post-coding). Feeds into `generating-qa-report` 
 - **No data → "unavailable" verdict.** Never silently pass when coverage data is missing.
 - **Don't inflate.** Suggesting tests for getters/setters/toString to hit threshold is an anti-pattern.
 - **P3 enhancement:** When `scoring-risk` output is available, use dynamic thresholds (critical=95%, high=85%, medium=80%, low=70%).
+
+## Consumers
+
+- `generating-qa-report` — receives Coverage dimension verdict and gap list

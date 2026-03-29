@@ -11,7 +11,7 @@ Generate domain-realistic test data with sanitized PII and validated statistical
 
 **Phase:** during-coding  
 **Inputs:**
-- `domain` (string, required) — insurance | financial | healthcare
+- `domain` (string, required) — insurance (for other domains, provide custom schema in `references/`)
 - `entity_type` (string, required) — policy | claim | customer | quote
 - `count` (integer, optional) — default 10
 - `output_format` (string, optional) — json | yaml | csv (default: json)

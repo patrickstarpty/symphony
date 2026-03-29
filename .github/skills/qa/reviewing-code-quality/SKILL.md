@@ -5,7 +5,7 @@ description: "Performs two-stage code review: spec compliance first, then code q
 
 # reviewing-code-quality
 
-Two-stage code review: verify spec compliance first, then evaluate code quality. Consumed by Code Reviewer agent (Claude Sonnet 4.6) for cross-model objectivity.
+Two-stage code review: verify spec compliance first, then evaluate code quality.
 
 ## Quick Reference
 
@@ -91,7 +91,7 @@ else → APPROVE
 
 ## Consumers
 
-- Code Reviewer agent (Claude Sonnet 4.6) — uses output as review summary, may expand with additional insights
+- Code Reviewer agent — uses output as review summary, may expand with additional insights
 
 ## Guardrails
 
