@@ -2,7 +2,11 @@
 
 **Date:** 2026-03-28
 **Author:** Patrick (QA CoE)
-**Status:** Draft
+**Status:** Implemented (last updated 2026-03-29)
+
+**Revisions:**
+- 2026-03-28 — Initial draft
+- 2026-03-29 — Post-implementation updates: TDD strategy, frontmatter standard, pipeline guide, quality review fixes
 **JIRA:** Create QA verification skills for AI-assisted delivery readiness
 **Parent spec:** [QA Ecosystem Design](2026-03-27-qa-skills-plugins-hooks-design.md)
 **Upstream:** [Orchestrator](2026-03-26-ai-native-sdlc-orchestrator-design.md), [QA Agent](2026-03-25-qa-agent-system-design.md)
@@ -17,7 +21,9 @@ Implementation-ready SKILL.md specifications for all 16 QA verification skills (
 
 **Scope:** Central-team quality patterns (how to evaluate/generate/enforce), not project-level configuration (what thresholds/frameworks to use). Project config flows through WORKFLOW.md and hook profiles.
 
-**Success criteria:** All skills follow anthropics/skills structure, gerund naming (ecosystem spec §4.4), eval coverage, composable outputs across phases.
+**Success criteria:** All skills follow `name`+`description`-only frontmatter (Anthropic standard), gerund naming, ## When to Use / ## Instructions / ## Guardrails / ## Consumers / ## Output sections, eval coverage, workpad output destinations. See `README.md` in `.github/skills/qa/` for pipeline navigation.
+
+> **Frontmatter note:** The YAML blocks in §4–§6 of this spec include extended fields (version, category, phase, input_schema, output_schema) for documentation purposes only. The actual SKILL.md files follow the Anthropic standard: only `name` (max 64 chars) and `description` (max 1024 chars) are valid frontmatter fields. All schema/dependency metadata lives in `## Quick Reference` body sections.
 
 ## 2. Skill Catalog
 
@@ -39,6 +45,8 @@ Implementation-ready SKILL.md specifications for all 16 QA verification skills (
 | 14 | `selecting-regressions` | execution | post | 3 |
 | 15 | `healing-broken-tests` | execution | post | 3 |
 | 16 | `analyzing-defects` | analysis | post | 3 |
+
+> **Delivery column (P):** Internal implementation order only. Users see skills as a unified QA suite — the P labels do NOT appear in skill descriptions or instructions. Skills can be invoked independently of delivery phase.
 
 ### Dependency Graph
 
@@ -122,7 +130,7 @@ validating-acceptance ◀─────┤                        ├──▶ 
 │   ├── scripts/{extract-ac.py, ambiguity-detector.py}
 │   ├── references/ambiguity-signals.md
 │   └── evals/{test-prompts.yaml, assertions.yaml}
-├── test-driven-development/      # P1 — QA extension (§3.1)
+├── test-driven-development/      # P1 — QA standalone TDD (§3.1)
 │   ├── SKILL.md
 │   ├── scripts/{tdd-rhythm-checker.sh, test-coverage-delta.sh}
 │   ├── references/{test-design-techniques.md, insurance-domain-patterns.md, testing-anti-patterns.md}
@@ -204,16 +212,35 @@ validating-acceptance ◀─────┤                        ├──▶ 
     ├── tdd-rules.md              # P1
     ├── security-standards.md     # P2
     ├── review-guidelines.md      # P3
-    └── platform/{typescript,python,java,go}.md  # P2
+    ├── platform/{typescript,python,java,go}.md  # P2
+    └── README.md                 # Pipeline navigation guide (Path A / B / C)
 ```
 
-### 3.1 TDD Extension Strategy
+Note: A `.github/skills/qa/.gitignore` file is also present in the directory.
 
-The QA extension at `.github/skills/qa/test-driven-development/` coexists with the Superpowers TDD skill at `.github/skills/test-driven-development/` (different paths, no collision).
+### 3.1 QA TDD Strategy
 
-- **Loading:** QA extension loads *in addition to* Superpowers TDD (never replaces). Triggered by `inject-tdd-rules` SessionStart hook when profile ≥ standard.
-- **Precedence:** On conflict, Superpowers wins. QA extension only adds net-new content under `## QA Enhancements` headers.
-- **What QA adds:** Test case generation from AC (equivalence partitioning, BVA, decision tables), insurance domain patterns, multi-framework templates (Jest/pytest/Playwright/JUnit), TDD rhythm verification script.
+The QA `test-driven-development` skill at `.github/skills/qa/test-driven-development/` is a **standalone skill** — it is NOT an extension of the Superpowers TDD skill at `.github/skills/test-driven-development/`. It incorporates the full TDD discipline (Iron Law, Red-Green-Refactor, mandatory Verify Red) directly, and adds the QA-specific layer on top.
+
+**Why standalone (not extension):**
+- An extension that says "Superpowers wins on conflict" creates ambiguous precedence and requires agents to load two skills simultaneously
+- The QA TDD skill needs to be self-contained and fully operable without knowledge of which other skills are loaded
+- The combined skill is more robust: Iron Law + test case matrix generation + domain patterns in one place
+
+**What QA TDD owns exclusively (not in Superpowers):**
+
+| Capability | Detail |
+|------------|--------|
+| Iron Law | `NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST` — identical philosophy, now in this skill |
+| Test case matrix | Equivalence partitioning, BVA, decision tables derived from structured AC |
+| Domain patterns | `references/insurance-domain-patterns.md` — policy lifecycle, claims, premium calc; other domains: apply same techniques with own domain knowledge |
+| Framework templates | `jest.test.ts.liquid`, `pytest.py.liquid`, `playwright.spec.ts.liquid`, `junit.java.liquid` |
+| Rhythm verification | `scripts/tdd-rhythm-checker.sh`, `scripts/test-coverage-delta.sh` |
+| Anti-rationalization | 6 common excuses + why each is wrong (inline in SKILL.md) |
+| Workpad output | Test case matrix written to `## Copilot Workpad` / `### QA: test-case-matrix` |
+| Script fallback | Manual verification steps when scripts unavailable |
+
+**Interaction with Superpowers TDD:** When both are loaded in the same session, they are complementary. Superpowers covers discipline enforcement at a deep level (red flags checklist, debugging integration). QA TDD covers the systematic AC-to-test derivation pipeline. No precedence conflict because they address different concerns.
 
 ---
 
@@ -252,8 +279,8 @@ output_schema:
 **Instructions:**
 1. Extract observable behavior statements from issue description
 2. Assess testability per statement
-3. Run `scripts/ambiguity-detector.py` — flags vague verbs ("appropriate", "properly"), missing thresholds ("large number"), undefined terms ("etc.")
-4. Run `scripts/extract-ac.py` — regex + heuristic AC extraction from Markdown/JIRA format
+3. Run `scripts/ambiguity-detector.py` — flags vague verbs ("appropriate", "properly"), missing thresholds ("large number"), undefined terms ("etc.") (fallback: scan manually for vague verbs in references/ambiguity-signals.md)
+4. Run `scripts/extract-ac.py` — regex + heuristic AC extraction from Markdown/JIRA format (fallback: parse AC manually — look for Given/When/Then, bullet lists, or numbered criteria)
 5. Output JSON: `acceptance_criteria[]`, `ambiguities[]`, `missing[]`
 
 **Scripts:**
@@ -278,60 +305,50 @@ output_schema:
 
 **Consumers:** test-driven-development, validating-acceptance-criteria, scoring-risk (P3).
 
-### 4.2 test-driven-development (QA Extension)
+**Output:** Write to workpad under `### QA: parsing-requirements` — AC count, ambiguities list, missing items.
+
+### 4.2 test-driven-development (Standalone QA TDD)
 
 ```yaml
 ---
 name: test-driven-development
-version: "1.0.0-qa"
-description: "Enforce TDD Red-Green-Refactor: generate test cases from AC, write failing tests, implement, verify"
-category: enforcement
-phase: during-coding
-platforms: ["all"]
-dependencies: ["parsing-requirements"]
-extends: "../test-driven-development/SKILL.md"
-input_schema:
-  - name: "acceptance_criteria"
-    type: "array"
-    required: true
-  - name: "framework"
-    type: "string"
-    required: false
-    description: "jest | pytest | playwright | junit. Auto-detected if omitted."
-output_schema:
-  - name: "test_cases"
-    type: "array"
-  - name: "test_files"
-    type: "array"
-  - name: "tdd_log"
-    type: "array"
+description: "Translates parsed acceptance criteria into a rigorous TDD cycle: derive test case matrix using equivalence partitioning, BVA, and decision tables, then enforce Red-Green-Refactor with framework-specific scaffolding. Use when acceptance criteria are available and need systematic translation into failing tests before any implementation code is written."
+# Spec-only fields (not in actual SKILL.md):
+# version: "2.0.0"
+# category: enforcement  
+# phase: during-coding
+# dependencies: [parsing-requirements]
+# input: acceptance_criteria (array, required), framework (string, optional: jest|pytest|playwright|junit)
+# output: test_cases (matrix), test_files (written), tdd_log (RGR audit trail)
 ---
 ```
 
-**Absorbs former test-case-matrix + test-skeleton-gen + tdd-enforce** — inseparable steps in one TDD workflow. Splitting created artificial boundaries.
+**Architecture change from original spec:** Redesigned from extension → standalone. Incorporates Superpowers TDD Iron Law and RGR discipline directly. See §3.1 for rationale.
 
-**Enhanced TDD flow:**
-1. **Analyze AC** → test case matrix (equivalence partitioning, BVA, decision tables)
-2. **Red** → test skeletons that compile but fail
-3. **Verify Red** → run, confirm expected failure reason
-4. **Green** → minimum implementation to pass
-5. **Verify Green** → all tests pass
-6. **Refactor** → improve structure, keep green
+**Core structure:**
+1. **Iron Law** — NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
+2. **Step 1** — Build test case matrix from AC (EP, BVA, Decision Tables with worked examples)
+3. **Steps 2–7** — Red → Verify Red (mandatory) → Green → Verify Green → Refactor → Repeat
+4. **Step 8** — Rhythm verification scripts
+5. **Domain Patterns** — Insurance domain + non-insurance fallback guidance
+6. **Anti-rationalization table** — 6 common excuses + rebuttals
 
-**QA enhancements beyond Superpowers TDD:**
+**QA additions vs base TDD discipline:**
 
-| Enhancement | Detail |
-|-------------|--------|
-| Test case generation | Equivalence partitioning, BVA, decision tables from structured AC |
-| Domain patterns | `references/insurance-domain-patterns.md` — policy lifecycle, claims, premium calc |
-| Multi-framework | Auto-detect from config → generate from `templates/<framework>.liquid` (AAA structure) |
-| Rhythm verification | `scripts/tdd-rhythm-checker.sh` — git diff analysis verifies Red→Green→Refactor ordering |
+| Added by QA TDD | Detail |
+|-----------------|--------|
+| Test case matrix | EP, BVA, decision tables derived from structured AC — systematic, not ad hoc |
+| Worked examples | Insurance-domain examples (premium threshold, password policy) for each technique |
+| Framework templates | `jest.test.ts.liquid`, `pytest.py.liquid`, `playwright.spec.ts.liquid`, `junit.java.liquid` |
+| Rhythm scripts | `tdd-rhythm-checker.sh` (git ordering), `test-coverage-delta.sh` (coverage delta) |
+| Script fallback | Manual verification steps when scripts unavailable |
+| Workpad output | Test case matrix → `### QA: test-case-matrix` in issue workpad |
 
-**Scripts:** `tdd-rhythm-checker.sh` (git ordering verification), `test-coverage-delta.sh` (coverage before/after each step).
+**Rules reference:** Load `rules/tdd-rules.md` before starting — framework detection, exceptions list.
 
-**Templates:** `jest.test.ts.liquid`, `pytest.py.liquid`, `playwright.spec.ts.liquid`, `junit.java.liquid`.
+**Guardrails:** NEVER write production code without prior failing test. NEVER skip Verify Red. NEVER add behavior during Refactor. No tests for exceptions in tdd-rules.md § Exceptions.
 
-**Guardrails:** Never skip Red phase. No tests for config/migrations/wrappers (per tdd-rules.md). Never contradict Superpowers TDD core principles.
+**Consumers:** generating-playwright-tests, generating-api-tests, generating-mobile-tests, generating-perf-tests.
 
 ### 4.3 analyzing-coverage
 
@@ -372,6 +389,7 @@ output_schema:
 **Skill justification:** The `coverage-delta-check` hook runs coverage and checks a number. This skill *interprets* — 75% on a payment module is more concerning than 75% on a utility helper.
 
 **Instructions:**
+0. Generate coverage report if absent: `npm test --coverage` (Jest/Vitest), `pytest --cov=src` (Python), `mvn test jacoco:report` (Java), `go test ./... -coverprofile=coverage.out` (Go). Output empty → verdict 'unavailable', stop.
 1. Parse coverage data (Istanbul/JaCoCo/coverage.py/lcov → standardized JSON)
 2. Compare line/branch/function against threshold
 3. Per uncovered file: assess risk (error handling? security-sensitive? user-facing?)
@@ -381,9 +399,13 @@ output_schema:
 
 **Scripts:** `coverage-report.py` (parse multi-tool output → standard JSON), `coverage-gap-analyzer.py` (identify gaps, categorize by risk).
 
+**Rules reference:** Load `rules/qa-standards.md` — default thresholds, mandatory error path coverage.
+
 **Guardrails:** Don't inflate coverage with trivial tests. Coverage is a signal, not a goal. No data → clear "unavailable" verdict, not silent failure.
 
-**P3 enhancement:** Dynamic thresholds from `scoring-risk` — critical components get stricter requirements.
+When scoring-risk output is available, use its recommended_thresholds instead of the default 80%. Without it, apply defaults from rules/qa-standards.md.
+
+**Output:** Write to workpad under `### QA: coverage` — verdict, percentages, threshold used, top gaps.
 
 ### 4.4 validating-acceptance-criteria
 
@@ -432,7 +454,11 @@ output_schema:
 
 **Scripts:** `ac-evidence-mapper.py` — keyword extraction from AC, fuzzy match against test names and code identifiers.
 
+**Rules reference:** Load `rules/qa-standards.md` — AC traceability requirements.
+
 **Guardrails:** Keyword match ≠ coverage — read test body. PARTIAL is not a soft pass. Never SATISFIED on code-only evidence without tests.
+
+**Output:** Write to workpad under `### QA: acceptance-criteria` — verdict, satisfied/partial/unmet counts, per-AC evidence.
 
 ### 4.5 classifying-test-failures
 
@@ -483,7 +509,11 @@ output_schema:
 
 **Guardrails:** Max 2 retries in P1. Passing on retry = flaky, not fixed. Identical assertion across all retries = real bug, not timing.
 
-**P3 enhancement:** Historical pass rate analysis via Knowledge Base replaces simple retry.
+**Future enhancement (not yet available):** Historical pass rate analysis via Knowledge Base replaces simple retry heuristics.
+
+**Rules reference:** Load `rules/qa-standards.md` — test independence requirements.
+
+**Output:** Write to workpad under `### QA: failures` — verdict, real_bugs/flaky/env_issues counts, per-failure classification.
 
 ### 4.6 generating-qa-report
 
@@ -543,6 +573,8 @@ output_schema:
 
 **Guardrails:** Reproducible given same inputs. Never omit a failing dimension. Advisory mode still states what would fail under strict.
 
+**Output:** Write to workpad under `### QA: report` — OVERALL verdict, dimension table, gate mode. On FAIL: list which dimension(s) failed and required action.
+
 ---
 
 ## 5. P2 Skills — Generation & Platform Expansion
@@ -570,7 +602,7 @@ input_schema:
   - name: "domain"
     type: "string"
     required: false
-    description: "insurance | banking | healthcare | generic"
+    description: "insurance (default, schemas in references/) | any domain with own schema reference"
   - name: "distribution"
     type: "string"
     required: false
@@ -608,6 +640,8 @@ output_schema:
 **Templates:** `fixture.json.liquid`, `factory.ts.liquid` (faker patterns), `factory.py.liquid` (factory_boy patterns).
 
 **Guardrails:** Never use real customer data. PII scan mandatory. Obviously fake PII ("Jane Doe", "555-0100"). Insurance policy numbers must not match real formats.
+
+**Domain scope:** `references/insurance-data-schemas.md` covers insurance entities. For other domains (financial, healthcare, retail), provide a custom schema reference file in `references/` and pass the domain name — the generation technique is domain-agnostic.
 
 ### 5.2 generating-playwright-tests
 
@@ -816,6 +850,8 @@ output_schema:
 
 **Guardrails:** Never target production without explicit confirmation. Always include think times. Define SLA thresholds *before* running. Synthetic data only.
 
+**Domain scope:** `insurance-load-profiles.md` provides insurance-specific load patterns (open enrollment surge, post-disaster claims spike). For other domains, define load profiles via the `load_profile` and `target_sla` inputs — the insurance reference is a default, not a requirement.
+
 ---
 
 ## 6. P3 Skills — Advanced & Self-Improving
@@ -1014,6 +1050,12 @@ output_schema:
 ---
 ```
 
+**Prerequisites:** This skill requires:
+1. CI integration feeding failure records (not manually entered)
+2. Knowledge Base with ≥10 defect records for confidence scoring
+
+**Without this infrastructure:** Use `classifying-test-failures` only. Fix tests manually based on classification output. Do not attempt auto-healing without CI + Knowledge Base.
+
 **Breakage classification and repair:**
 | Type | Detection | Repair | Confidence |
 |------|-----------|--------|------------|
@@ -1105,6 +1147,19 @@ Declarative quality standards injected into agent context. Complement skills (pr
 | `platform/go.md` | Table-driven tests, error conventions, goroutine testing, race detector |
 | `review-guidelines.md` (P3) | Two-stage process, comment quality, cross-model protocol |
 
+### 7.4 Rules Connectivity
+
+Skills explicitly load rules files at runtime via `**Load before starting:**` directives:
+
+| Rules File | Loaded by |
+|------------|-----------|
+| `qa-standards.md` | analyzing-coverage, validating-acceptance-criteria, classifying-test-failures, test-driven-development |
+| `tdd-rules.md` | test-driven-development |
+| `review-guidelines.md` | reviewing-code-quality |
+| `security-standards.md` | reviewing-code-quality, generating-api-tests |
+
+Rules files are declarative (principles); skills are procedural (steps). Together they provide both "what the standard is" and "how to apply it."
+
 ## 8. Eval Framework
 
 Each skill ships with `evals/test-prompts.yaml` + `evals/assertions.yaml` (anthropics/skills 4-mode pattern).
@@ -1194,12 +1249,19 @@ Not yet implemented. Evals can run manually until CLI exists.
 - **Templates use Liquid** (.liquid) — already used in GitHub Actions, readable by non-developers.
 - **Migration path:** `.github/skills/qa/<skill>/` → `symphony-qa-core/skills/<skill>/` when plugin is packaged. File move, no content changes.
 - **Knowledge Base degradation (P2+):** `scoring-risk` without history → defect factor defaults to 0. `selecting-regressions` without dep graph → filename matching (low confidence). `analyzing-defects` without history → current batch only.
+- **Frontmatter standard:** Only `name` and `description` allowed in SKILL.md frontmatter (Anthropic standard). All schema, dependency, and version metadata lives in `## Quick Reference` body sections. The extended YAML in this spec is documentation-only.
+- **Workpad output:** All evaluation skills (parsing-requirements, test-driven-development, analyzing-coverage, validating-acceptance-criteria, classifying-test-failures, generating-qa-report) write structured output to the issue `## Copilot Workpad` under a `### QA: <skill>` heading.
+- **Script fallbacks:** Every skill that calls a Python/shell script includes a `**Script unavailable:**` fallback describing how to perform the equivalent step manually. Skills are usable even without a fully configured scripts/ environment.
+- **Domain scope:** Insurance-specific reference files are defaults, not requirements. All skills are designed domain-agnostically; insurance schemas and patterns are the provided starting point. Teams bring their own domain references for other industries.
+- **Pipeline entry point:** `README.md` in `.github/skills/qa/` provides a pipeline navigation guide with three paths (Full Pipeline, Report-Only, Test Generation), skill map by phase, output convention, and rules directory map.
+- **Rules connectivity:** Skills explicitly load relevant rules files via `**Load before starting:**` directives. See §7.4 for the full connectivity table.
 
 ## 10. Open Questions
 
-1. ~~**TDD extension loading order**~~ **RESOLVED** (§3.1).
+1. ~~**TDD extension loading order**~~ **RESOLVED** (§3.1): QA TDD redesigned as standalone skill. Incorporates Superpowers TDD Iron Law + RGR discipline directly. No extension/loading-order concern.
 2. **Eval runner** — CLI doesn't exist yet. Evals included from P1 to document expected behavior.
-3. **Script deps** — stdlib only for P1. Per-skill `requirements.txt` for P2+.
+3. ~~**Script deps**~~ **RESOLVED**: stdlib-only for all phases. P2 scripts use stdlib replacements (no pydantic/faker/lxml). Script fallback guidance added to all skills for environments where scripts are unavailable.
 4. **Knowledge Base schema** — P3 skills assume generic query interface. Finalize during P2 implementation.
 5. **Template maintenance** — QA CoE maintains core templates; teams override via WORKFLOW.md.
 6. **Insurance domain knowledge** — Authored by business SMEs, not generated. QA CoE leads with business team input.
+7. ~~**Frontmatter standard clarified**~~ **RESOLVED**: anthropics/skills standard allows only name + description in frontmatter. Extended YAML in this spec is documentation-only. All SKILL.md files validated against this standard.
